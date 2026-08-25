@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFC ReClass — Professional BIM Auditing Tool</title>
+    <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: #374151;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .version-badge {
+            font-size: 10px;
+            background: var(--accent);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        /* 3-Column Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 350px 1fr 380px;
+            flex-grow: 1;
+            overflow: hidden;
+            background-color: var(--bg-primary);
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+            background-color: var(--bg-secondary);
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .column-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(255, 255, 255, 0.02);
+            flex-shrink: 0;
+        }
+
+        .column-header h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .column-body {
+            padding: 16px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* Controls & Form styling */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], select, textarea {
+            width: 100%;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 10px;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.15s;
+        }
+
+        .btn:hover { background-color: var(--accent-hover); }
+        .btn:disabled {
+            background-color: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-success { background-color: var(--success); }
+        .btn-success:hover { background-color: #059669; }
+
+        /* File Dropzone */
+        .file-dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        .file-dropzone:hover { border-color: var(--accent); }
+        .file-dropzone input { display: none; }
+
+        /* Middle Column Audit Controls */
+        .search-container {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .search-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            background-color: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .element-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .element-item {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+
+        .element-item:hover {
+            border-color: var(--text-muted);
+        }
+
+        .element-item.selected {
+            border-color: var(--accent);
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        .element-item input[type="checkbox"] {
+            margin-top: 3px;
+        }
+
+        .element-info {
+            flex-grow: 1;
+            font-size: 12px;
+        }
+
+        .element-id {
+            font-family: monospace;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .element-name {
+            font-weight: 500;
+            word-break: break-all;
+            margin-top: 2px;
+        }
+
+        .element-class-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Burn-Down Indicators */
+        .progress-wrapper {
+            margin-bottom: 16px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: var(--bg-tertiary);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Changes Preview log */
+        .preview-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .preview-item {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 11px;
+            border-left: 3px solid var(--success);
+        }
+
+        .preview-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .preview-label {
+            color: var(--text-muted);
+        }
+
+        .preview-val {
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .preview-change-arrow {
+            color: var(--warning);
+            padding: 0 4px;
+        }
+
+        /* Filter Tab Bar */
+        .tab-group {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            flex-grow: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background-color: rgba(37, 99, 235, 0.02);
+        }
+
+        .count-bubble {
+            background-color: var(--bg-tertiary);
+            color: var(--text-main);
+            padding: 1px 5px;
+            border-radius: 999px;
+            font-size: 9px;
+            margin-left: 4px;
+        }
+
+        .selection-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* High-Performance Screen Processing Overlay */
+        #progressOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(9, 13, 22, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .progress-box {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 32px;
+            border-radius: 12px;
+            width: 440px;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+        }
+
+        .progress-box h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .progress-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-container {
+            height: 8px;
+            background-color: var(--bg-tertiary);
+            border-radius: 999px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--accent);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        /* Utilities */
+        .text-center { text-align: center; }
+        .p-20 { padding: 20px; }
+
+        /* Target class search-as-you-type dropdown */
+        .suggestion-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-top: 4px;
+            max-height: 260px;
+            overflow-y: auto;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        .suggestion-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover, .suggestion-item.active {
+            background: var(--accent);
+            color: #fff;
+        }
+        .suggestion-item .sugg-class { font-weight: 600; white-space: nowrap; }
+        .suggestion-item .sugg-via {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .suggestion-item.active .sugg-via { color: rgba(255,255,255,0.85); }
+
+        /* Copy-to-clipboard affordances on GlobalID/ExpressID/Tag in the audit list */
+        .element-id-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .copy-id-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+        .copy-id-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>IFC ReClass 🛠️ <span class="version-badge">IFC 4x3 Browser Native Engine</span></h1>
+        <div style="display: flex; gap: 12px;">
+            <button id="btnExport" class="btn btn-success" style="width: auto; padding: 6px 16px;" onclick="exportIFC()" disabled>Export .ifc File</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        
+        <!-- Column 1: Audits, Filters & ReClass Definitions -->
+        <div class="column">
+            <div class="column-header">
+                <h2>1. Audit Parameters</h2>
+            </div>
+            <div class="column-body">
+                <div class="file-dropzone" onclick="document.getElementById('fileInput').click()" id="dropzone">
+                    <span id="uploadText">Click or Drag & Drop IFC File</span>
+                    <input type="file" id="fileInput" accept=".ifc">
+                </div>
+                
+                <div id="fileMeta" style="display: none; font-size: 12px; color: var(--success); margin-bottom: 16px; background: rgba(16, 185, 129, 0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);"></div>
+
+                <!-- Active Search-as-you-type Target Class input (matches class names AND PredefinedType enum values) -->
+                <div class="form-group" id="classInputContainer" style="position: relative;">
+                    <label>Target IFC Class (4x3 Searchable — also matches Type names, e.g. "stud")</label>
+                    <input type="text" id="targetClass" autocomplete="off" placeholder="Type to search e.g. IFCTRACK or STUD..." oninput="onTargetClassInput()" onfocus="this.select()">
+                    <div id="classSuggestions" class="suggestion-dropdown"></div>
+                </div>
+
+                <!-- Dynamic Predefined Type Select Dropdown -->
+                <div class="form-group" id="preTypeContainer">
+                    <label>Predefined Type (IFC Enum)</label>
+                    <select id="predefinedType" onchange="onPredefinedTypeChanged()">
+                        <option value="NOTDEFINED">NOTDEFINED</option>
+                        <option value="USERDEFINED">USERDEFINED</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>User Defined Type</label>
+                    <input type="text" id="userdefinedType" placeholder="Sets PredefinedType to USERDEFINED">
+                </div>
+
+                <div class="form-group">
+                    <label>Rename Pattern (Supports Template Tokens)</label>
+                    <input type="text" id="renamePattern" placeholder="e.g. Concrete Slab — [Name]">
+                    <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">Use [Name] to inject the original element name.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="2" placeholder="Instance descriptive parameters..."></textarea>
+                </div>
+
+                <button id="btnApply" class="btn" onclick="applyBulkReclass()" style="margin-top: 10px;" disabled>
+                    Apply to Selected Element(s)
+                </button>
+            </div>
+        </div>
+
+        <!-- Column 2: Interactive Burn-Down & Filter List -->
+        <div class="column">
+            <div class="column-header">
+                <h2>2. Central Audit & Filter</h2>
+            </div>
+            <div class="column-body" style="padding: 12px; display: flex; flex-direction: column;">
+                
+                <div class="progress-wrapper">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
+                        <span>PROXIES BURN-DOWN</span>
+                        <span id="burnDownText">0/0 Cleaned</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="burnDownFill"></div>
+                    </div>
+                </div>
+
+                <div class="tab-group">
+                    <div class="tab active" id="tabProxies" onclick="changeAuditStep('proxies')">1. Proxies <span class="count-bubble" id="cntProxies">0</span></div>
+                    <div class="tab" id="tabReclassed" onclick="changeAuditStep('reclassed')">2. ReClassed <span class="count-bubble" id="cntReclassed">0</span></div>
+                    <div class="tab" id="tabAll" onclick="changeAuditStep('all')">3. All Elements <span class="count-bubble" id="cntAll">0</span></div>
+                </div>
+
+                <div class="search-container">
+                    <input type="text" id="booleanSearch" placeholder="Search Name, GlobalID, Tag — or #1234 for exact Express ID" oninput="runFilter()">
+                    <span class="search-badge" id="searchStatus">0 Matched</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin: -8px 0 12px 2px;">
+                    Searches Name, GlobalID &amp; Tag together &nbsp;·&nbsp; <strong>#1234</strong> for an exact Express ID &nbsp;·&nbsp; <strong>+</strong> = AND &nbsp;·&nbsp; <strong>|</strong> = OR &nbsp;·&nbsp; <strong>-</strong> = NOT &nbsp;·&nbsp; "quotes" for exact phrase &nbsp;·&nbsp; (parentheses) to group — full words AND/OR/NOT still work too
+                </div>
+
+                <div class="selection-actions">
+                    <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)"> Select All Visible
+                    </label>
+                    <span id="selectionCountText">0 Selected</span>
+                </div>
+
+                <div class="table-container" style="flex-grow: 1; overflow-y: auto;">
+                    <div class="element-list" id="elementListContainer">
+                        <div class="text-center p-20" style="color: var(--text-muted); font-size: 13px;">
+                            No IFC file loaded. Please upload a file to begin reclassification.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Column 3: Audit Changes Log & Preview -->
+        <div class="column">
+            <div class="column-header">
+                <h2>3. Proposed Changes Preview</h2>
+            </div>
+            <div class="column-body">
+                <div class="preview-list" id="previewListContainer">
+                    <div class="text-center p-20" style="color: var(--text-muted); font-size: 12px;">
+                        Select elements and input changes on the left to see comparative previews.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- UI Modal Progress Overlay -->
+    <div id="progressOverlay">
+        <div class="progress-box">
+            <h3 id="progressTitle">Analyzing Document</h3>
+            <div class="progress-sub" id="progressSub">Starting native parser...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressOverlayFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTML Autocomplete Schema Target Datalist -->
+
+    <script>
+        // --- Complete IFC 4x3 Schema Dictionary ---
+        // Generated from the authoritative buildingSMART IFC4X3 EXPRESS schema
+        // (via IfcOpenShell) on 2026-08-20. Covers every non-abstract subtype of
+        // IfcElement -- i.e. every physical building, MEP/services, and
+        // civil/infrastructure element that can carry geometry in a model.
+        // typeIdx/types are null for the handful of classes that have no
+        // PredefinedType attribute at all (e.g. IFCKERB's 9th argument is the
+        // boolean "Mountable", not an enum -- do not write a string there).
+        const IFC4X3_SCHEMA = {
+            "IFCACTUATOR": { attrs: 9, typeIdx: 8, types: ["ELECTRICACTUATOR", "HANDOPERATEDACTUATOR", "HYDRAULICACTUATOR", "PNEUMATICACTUATOR", "THERMOSTATICACTUATOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTERMINAL": { attrs: 9, typeIdx: 8, types: ["DIFFUSER", "GRILLE", "LOUVRE", "REGISTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTERMINALBOX": { attrs: 9, typeIdx: 8, types: ["CONSTANTFLOW", "VARIABLEFLOWPRESSUREDEPENDANT", "VARIABLEFLOWPRESSUREINDEPENDANT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTOAIRHEATRECOVERY": { attrs: 9, typeIdx: 8, types: ["FIXEDPLATECOUNTERFLOWEXCHANGER", "FIXEDPLATECROSSFLOWEXCHANGER", "FIXEDPLATEPARALLELFLOWEXCHANGER", "HEATPIPE", "ROTARYWHEEL", "RUNAROUNDCOILLOOP", "THERMOSIPHONCOILTYPEHEATEXCHANGERS", "THERMOSIPHONSEALEDTUBEHEATEXCHANGERS", "TWINTOWERENTHALPYRECOVERYLOOPS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCALARM": { attrs: 9, typeIdx: 8, types: ["BELL", "BREAKGLASSBUTTON", "LIGHT", "MANUALPULLBOX", "RAILWAYCROCODILE", "RAILWAYDETONATOR", "SIREN", "WHISTLE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAUDIOVISUALAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["AMPLIFIER", "CAMERA", "COMMUNICATIONTERMINAL", "DISPLAY", "MICROPHONE", "PLAYER", "PROJECTOR", "RECEIVER", "RECORDINGEQUIPMENT", "SPEAKER", "SWITCHER", "TELEPHONE", "TUNER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBEAM": { attrs: 9, typeIdx: 8, types: ["BEAM", "CORNICE", "DIAPHRAGM", "EDGEBEAM", "GIRDER_SEGMENT", "HATSTONE", "HOLLOWCORE", "JOIST", "LINTEL", "PIERCAP", "SPANDREL", "T_BEAM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBEARING": { attrs: 9, typeIdx: 8, types: ["CYLINDRICAL", "DISK", "ELASTOMERIC", "GUIDE", "POT", "ROCKER", "ROLLER", "SPHERICAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBOILER": { attrs: 9, typeIdx: 8, types: ["STEAM", "WATER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBOREHOLE": { attrs: 8, typeIdx: null, types: null },
+            "IFCBUILDINGELEMENTPART": { attrs: 9, typeIdx: 8, types: ["APRON", "ARMOURUNIT", "INSULATION", "PRECASTPANEL", "SAFETYCAGE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBUILDINGELEMENTPROXY": { attrs: 9, typeIdx: 8, types: ["COMPLEX", "ELEMENT", "PARTIAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBUILTELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCBURNER": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLECARRIERFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CONNECTOR", "CROSS", "JUNCTION", "TEE", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLECARRIERSEGMENT": { attrs: 9, typeIdx: 8, types: ["CABLEBRACKET", "CABLELADDERSEGMENT", "CABLETRAYSEGMENT", "CABLETRUNKINGSEGMENT", "CATENARYWIRE", "CONDUITSEGMENT", "DROPPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLEFITTING": { attrs: 9, typeIdx: 8, types: ["CONNECTOR", "ENTRY", "EXIT", "FANOUT", "JUNCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLESEGMENT": { attrs: 9, typeIdx: 8, types: ["BUSBARSEGMENT", "CABLESEGMENT", "CONDUCTORSEGMENT", "CONTACTWIRESEGMENT", "CORESEGMENT", "FIBERSEGMENT", "FIBERTUBE", "OPTICALCABLESEGMENT", "STITCHWIRE", "WIREPAIRSEGMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCAISSONFOUNDATION": { attrs: 9, typeIdx: 8, types: ["CAISSON", "WELL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCHILLER": { attrs: 9, typeIdx: 8, types: ["AIRCOOLED", "HEATRECOVERY", "WATERCOOLED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCHIMNEY": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCCIVILELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCCOIL": { attrs: 9, typeIdx: 8, types: ["DXCOOLINGCOIL", "ELECTRICHEATINGCOIL", "GASHEATINGCOIL", "HYDRONICCOIL", "STEAMHEATINGCOIL", "WATERCOOLINGCOIL", "WATERHEATINGCOIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOLUMN": { attrs: 9, typeIdx: 8, types: ["COLUMN", "PIERSTEM", "PIERSTEM_SEGMENT", "PILASTER", "STANDCOLUMN", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOMMUNICATIONSAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["ANTENNA", "AUTOMATON", "COMPUTER", "FAX", "GATEWAY", "INTELLIGENTPERIPHERAL", "IPNETWORKEQUIPMENT", "LINESIDEELECTRONICUNIT", "MODEM", "NETWORKAPPLIANCE", "NETWORKBRIDGE", "NETWORKHUB", "OPTICALLINETERMINAL", "OPTICALNETWORKUNIT", "PRINTER", "RADIOBLOCKCENTER", "REPEATER", "ROUTER", "SCANNER", "TELECOMMAND", "TELEPHONYEXCHANGE", "TRANSITIONCOMPONENT", "TRANSPONDER", "TRANSPORTEQUIPMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOMPRESSOR": { attrs: 9, typeIdx: 8, types: ["BOOSTER", "DYNAMIC", "HERMETIC", "OPENTYPE", "RECIPROCATING", "ROLLINGPISTON", "ROTARY", "ROTARYVANE", "SCROLL", "SEMIHERMETIC", "SINGLESCREW", "SINGLESTAGE", "TROCHOIDAL", "TWINSCREW", "WELDEDSHELLHERMETIC", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCONDENSER": { attrs: 9, typeIdx: 8, types: ["AIRCOOLED", "EVAPORATIVECOOLED", "WATERCOOLED", "WATERCOOLEDBRAZEDPLATE", "WATERCOOLEDSHELLCOIL", "WATERCOOLEDSHELLTUBE", "WATERCOOLEDTUBEINTUBE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCONTROLLER": { attrs: 9, typeIdx: 8, types: ["FLOATING", "MULTIPOSITION", "PROGRAMMABLE", "PROPORTIONAL", "TWOPOSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCONVEYORSEGMENT": { attrs: 9, typeIdx: 8, types: ["BELTCONVEYOR", "BUCKETCONVEYOR", "CHUTECONVEYOR", "SCREWCONVEYOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOOLEDBEAM": { attrs: 9, typeIdx: 8, types: ["ACTIVE", "PASSIVE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOOLINGTOWER": { attrs: 9, typeIdx: 8, types: ["MECHANICALFORCEDDRAFT", "MECHANICALINDUCEDDRAFT", "NATURALDRAFT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOURSE": { attrs: 9, typeIdx: 8, types: ["ARMOUR", "BALLASTBED", "CORE", "FILTER", "PAVEMENT", "PROTECTION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOVERING": { attrs: 9, typeIdx: 8, types: ["CEILING", "CLADDING", "COPING", "FLOORING", "INSULATION", "MEMBRANE", "MOLDING", "ROOFING", "SKIRTINGBOARD", "SLEEVING", "TOPPING", "WRAPPING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCURTAINWALL": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCDAMPER": { attrs: 9, typeIdx: 8, types: ["BACKDRAFTDAMPER", "BALANCINGDAMPER", "BLASTDAMPER", "CONTROLDAMPER", "FIREDAMPER", "FIRESMOKEDAMPER", "FUMEHOODEXHAUST", "GRAVITYDAMPER", "GRAVITYRELIEFDAMPER", "RELIEFDAMPER", "SMOKEDAMPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDEEPFOUNDATION": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISCRETEACCESSORY": { attrs: 9, typeIdx: 8, types: ["ANCHORPLATE", "BIRDPROTECTION", "BRACKET", "CABLEARRANGER", "ELASTIC_CUSHION", "EXPANSION_JOINT_DEVICE", "FILLER", "FLASHING", "INSULATOR", "LOCK", "PANEL_STRENGTHENING", "POINTMACHINEMOUNTINGDEVICE", "POINT_MACHINE_LOCKING_DEVICE", "RAILBRACE", "RAILPAD", "RAIL_LUBRICATION", "RAIL_MECHANICAL_EQUIPMENT", "SHOE", "SLIDINGCHAIR", "SOUNDABSORPTION", "TENSIONINGEQUIPMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISTRIBUTIONBOARD": { attrs: 9, typeIdx: 8, types: ["CONSUMERUNIT", "DISPATCHINGBOARD", "DISTRIBUTIONBOARD", "DISTRIBUTIONFRAME", "MOTORCONTROLCENTRE", "SWITCHBOARD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISTRIBUTIONCHAMBERELEMENT": { attrs: 9, typeIdx: 8, types: ["FORMEDDUCT", "INSPECTIONCHAMBER", "INSPECTIONPIT", "MANHOLE", "METERCHAMBER", "SUMP", "TRENCH", "VALVECHAMBER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISTRIBUTIONCONTROLELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONFLOWELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDOOR": { attrs: 13, typeIdx: 10, types: ["BOOM_BARRIER", "DOOR", "GATE", "TRAPDOOR", "TURNSTILE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CONNECTOR", "ENTRY", "EXIT", "JUNCTION", "OBSTRUCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTSEGMENT": { attrs: 9, typeIdx: 8, types: ["FLEXIBLESEGMENT", "RIGIDSEGMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTSILENCER": { attrs: 9, typeIdx: 8, types: ["FLATOVAL", "RECTANGULAR", "ROUND", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEARTHWORKSCUT": { attrs: 9, typeIdx: 8, types: ["BASE_EXCAVATION", "CUT", "DREDGING", "EXCAVATION", "OVEREXCAVATION", "PAVEMENTMILLING", "STEPEXCAVATION", "TOPSOILREMOVAL", "TRENCH", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEARTHWORKSELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCEARTHWORKSFILL": { attrs: 9, typeIdx: 8, types: ["BACKFILL", "COUNTERWEIGHT", "EMBANKMENT", "SLOPEFILL", "SUBGRADE", "SUBGRADEBED", "TRANSITIONSECTION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["DISHWASHER", "ELECTRICCOOKER", "FREESTANDINGELECTRICHEATER", "FREESTANDINGFAN", "FREESTANDINGWATERCOOLER", "FREESTANDINGWATERHEATER", "FREEZER", "FRIDGE_FREEZER", "HANDDRYER", "KITCHENMACHINE", "MICROWAVE", "PHOTOCOPIER", "REFRIGERATOR", "TUMBLEDRYER", "VENDINGMACHINE", "WASHINGMACHINE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICDISTRIBUTIONBOARD": { attrs: 9, typeIdx: 8, types: ["CONSUMERUNIT", "DISTRIBUTIONBOARD", "MOTORCONTROLCENTRE", "SWITCHBOARD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICFLOWSTORAGEDEVICE": { attrs: 9, typeIdx: 8, types: ["BATTERY", "CAPACITOR", "CAPACITORBANK", "COMPENSATOR", "HARMONICFILTER", "INDUCTOR", "INDUCTORBANK", "RECHARGER", "UPS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICFLOWTREATMENTDEVICE": { attrs: 9, typeIdx: 8, types: ["ELECTRONICFILTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICGENERATOR": { attrs: 9, typeIdx: 8, types: ["CHP", "ENGINEGENERATOR", "STANDALONE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICMOTOR": { attrs: 9, typeIdx: 8, types: ["DC", "INDUCTION", "POLYPHASE", "RELUCTANCESYNCHRONOUS", "SYNCHRONOUS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICTIMECONTROL": { attrs: 9, typeIdx: 8, types: ["RELAY", "TIMECLOCK", "TIMEDELAY", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELEMENTASSEMBLY": { attrs: 10, typeIdx: 9, types: ["ABUTMENT", "ACCESSORY_ASSEMBLY", "ARCH", "BEAM_GRID", "BRACED_FRAME", "CROSS_BRACING", "DECK", "DILATATIONPANEL", "ENTRANCEWORKS", "GIRDER", "GRID", "MAST", "PIER", "PYLON", "RAIL_MECHANICAL_EQUIPMENT_ASSEMBLY", "REINFORCEMENT_UNIT", "RIGID_FRAME", "SHELTER", "SIGNALASSEMBLY", "SLAB_FIELD", "SUMPBUSTER", "SUPPORTINGASSEMBLY", "SUSPENSIONASSEMBLY", "TRACKPANEL", "TRACTION_SWITCHING_ASSEMBLY", "TRAFFIC_CALMING_DEVICE", "TRUSS", "TURNOUTPANEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCENERGYCONVERSIONDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCENGINE": { attrs: 9, typeIdx: 8, types: ["EXTERNALCOMBUSTION", "INTERNALCOMBUSTION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEVAPORATIVECOOLER": { attrs: 9, typeIdx: 8, types: ["DIRECTEVAPORATIVEAIRWASHER", "DIRECTEVAPORATIVEPACKAGEDROTARYAIRCOOLER", "DIRECTEVAPORATIVERANDOMMEDIAAIRCOOLER", "DIRECTEVAPORATIVERIGIDMEDIAAIRCOOLER", "DIRECTEVAPORATIVESLINGERSPACKAGEDAIRCOOLER", "INDIRECTDIRECTCOMBINATION", "INDIRECTEVAPORATIVECOOLINGTOWERORCOILCOOLER", "INDIRECTEVAPORATIVEPACKAGEAIRCOOLER", "INDIRECTEVAPORATIVEWETCOIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEVAPORATOR": { attrs: 9, typeIdx: 8, types: ["DIRECTEXPANSION", "DIRECTEXPANSIONBRAZEDPLATE", "DIRECTEXPANSIONSHELLANDTUBE", "DIRECTEXPANSIONTUBEINTUBE", "FLOODEDSHELLANDTUBE", "SHELLANDCOIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFAN": { attrs: 9, typeIdx: 8, types: ["CENTRIFUGALAIRFOIL", "CENTRIFUGALBACKWARDINCLINEDCURVED", "CENTRIFUGALFORWARDCURVED", "CENTRIFUGALRADIAL", "PROPELLORAXIAL", "TUBEAXIAL", "VANEAXIAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFASTENER": { attrs: 9, typeIdx: 8, types: ["GLUE", "MORTAR", "WELD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFILTER": { attrs: 9, typeIdx: 8, types: ["AIRPARTICLEFILTER", "COMPRESSEDAIRFILTER", "ODORFILTER", "OILFILTER", "STRAINER", "WATERFILTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFIRESUPPRESSIONTERMINAL": { attrs: 9, typeIdx: 8, types: ["BREECHINGINLET", "FIREHYDRANT", "FIREMONITOR", "HOSEREEL", "SPRINKLER", "SPRINKLERDEFLECTOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWCONTROLLER": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWFITTING": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWINSTRUMENT": { attrs: 9, typeIdx: 8, types: ["AMMETER", "COMBINED", "FREQUENCYMETER", "PHASEANGLEMETER", "POWERFACTORMETER", "PRESSUREGAUGE", "THERMOMETER", "VOLTMETER", "VOLTMETER_PEAK", "VOLTMETER_RMS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWMETER": { attrs: 9, typeIdx: 8, types: ["ENERGYMETER", "GASMETER", "OILMETER", "WATERMETER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWMOVINGDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSEGMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSTORAGEDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTERMINAL": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTREATMENTDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFOOTING": { attrs: 9, typeIdx: 8, types: ["CAISSON_FOUNDATION", "FOOTING_BEAM", "PAD_FOOTING", "PILE_CAP", "STRIP_FOOTING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFURNISHINGELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFURNITURE": { attrs: 9, typeIdx: 8, types: ["BED", "CHAIR", "DESK", "FILECABINET", "SHELF", "SOFA", "TABLE", "TECHNICALCABINET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCGEOGRAPHICELEMENT": { attrs: 9, typeIdx: 8, types: ["SOIL_BORING_POINT", "TERRAIN", "VEGETATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCGEOMODEL": { attrs: 8, typeIdx: null, types: null },
+            "IFCGEOSLICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCGEOTECHNICALSTRATUM": { attrs: 9, typeIdx: 8, types: ["SOLID", "VOID", "WATER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCHEATEXCHANGER": { attrs: 9, typeIdx: 8, types: ["PLATE", "SHELLANDTUBE", "TURNOUTHEATING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCHUMIDIFIER": { attrs: 9, typeIdx: 8, types: ["ADIABATICAIRWASHER", "ADIABATICATOMIZING", "ADIABATICCOMPRESSEDAIRNOZZLE", "ADIABATICPAN", "ADIABATICRIGIDMEDIA", "ADIABATICULTRASONIC", "ADIABATICWETTEDELEMENT", "ASSISTEDBUTANE", "ASSISTEDELECTRIC", "ASSISTEDNATURALGAS", "ASSISTEDPROPANE", "ASSISTEDSTEAM", "STEAMINJECTION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCIMPACTPROTECTIONDEVICE": { attrs: 9, typeIdx: 8, types: ["BUMPER", "CRASHCUSHION", "DAMPINGSYSTEM", "FENDER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCINTERCEPTOR": { attrs: 9, typeIdx: 8, types: ["CYCLONIC", "GREASE", "OIL", "PETROL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCJUNCTIONBOX": { attrs: 9, typeIdx: 8, types: ["DATA", "POWER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCKERB": { attrs: 9, typeIdx: null, types: null },
+            "IFCLAMP": { attrs: 9, typeIdx: 8, types: ["COMPACTFLUORESCENT", "FLUORESCENT", "HALOGEN", "HIGHPRESSUREMERCURY", "HIGHPRESSURESODIUM", "LED", "METALHALIDE", "OLED", "TUNGSTENFILAMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCLIGHTFIXTURE": { attrs: 9, typeIdx: 8, types: ["DIRECTIONSOURCE", "POINTSOURCE", "SECURITYLIGHTING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCLIQUIDTERMINAL": { attrs: 9, typeIdx: 8, types: ["HOSEREEL", "LOADINGARM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMECHANICALFASTENER": { attrs: 11, typeIdx: 10, types: ["ANCHORBOLT", "BOLT", "CHAIN", "COUPLER", "DOWEL", "NAIL", "NAILPLATE", "RAILFASTENING", "RAILJOINT", "RIVET", "ROPE", "SCREW", "SHEARCONNECTOR", "STAPLE", "STUDSHEARCONNECTOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMEDICALDEVICE": { attrs: 9, typeIdx: 8, types: ["AIRSTATION", "FEEDAIRUNIT", "OXYGENGENERATOR", "OXYGENPLANT", "VACUUMSTATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMEMBER": { attrs: 9, typeIdx: 8, types: ["ARCH_SEGMENT", "BRACE", "CHORD", "COLLAR", "MEMBER", "MULLION", "PLATE", "POST", "PURLIN", "RAFTER", "STAY_CABLE", "STIFFENING_RIB", "STRINGER", "STRUCTURALCABLE", "STRUT", "STUD", "SUSPENDER", "SUSPENSION_CABLE", "TIEBAR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMOBILETELECOMMUNICATIONSAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["ACCESSPOINT", "BASEBANDUNIT", "BASETRANSCEIVERSTATION", "E_UTRAN_NODE_B", "GATEWAY_GPRS_SUPPORT_NODE", "MASTERUNIT", "MOBILESWITCHINGCENTER", "MSCSERVER", "PACKETCONTROLUNIT", "REMOTERADIOUNIT", "REMOTEUNIT", "SERVICE_GPRS_SUPPORT_NODE", "SUBSCRIBERSERVER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMOORINGDEVICE": { attrs: 9, typeIdx: 8, types: ["BOLLARD", "LINETENSIONER", "MAGNETICDEVICE", "MOORINGHOOKS", "VACUUMDEVICE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMOTORCONNECTION": { attrs: 9, typeIdx: 8, types: ["BELTDRIVE", "COUPLING", "DIRECTDRIVE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCNAVIGATIONELEMENT": { attrs: 9, typeIdx: 8, types: ["BEACON", "BUOY", "USERDEFINED", "NOTDEFINED"] },
+            "IFCOPENINGELEMENT": { attrs: 9, typeIdx: 8, types: ["OPENING", "RECESS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCOUTLET": { attrs: 9, typeIdx: 8, types: ["AUDIOVISUALOUTLET", "COMMUNICATIONSOUTLET", "DATAOUTLET", "POWEROUTLET", "TELEPHONEOUTLET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPAVEMENT": { attrs: 9, typeIdx: 8, types: ["FLEXIBLE", "RIGID", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPILE": { attrs: 10, typeIdx: 8, types: ["BORED", "COHESION", "DRIVEN", "FRICTION", "JETGROUTING", "SUPPORT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPIPEFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CONNECTOR", "ENTRY", "EXIT", "JUNCTION", "OBSTRUCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPIPESEGMENT": { attrs: 9, typeIdx: 8, types: ["CULVERT", "FLEXIBLESEGMENT", "GUTTER", "RIGIDSEGMENT", "SPOOL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPLATE": { attrs: 9, typeIdx: 8, types: ["BASE_PLATE", "COVER_PLATE", "CURTAIN_PANEL", "FLANGE_PLATE", "GUSSET_PLATE", "SHEET", "SPLICE_PLATE", "STIFFENER_PLATE", "WEB_PLATE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPROJECTIONELEMENT": { attrs: 9, typeIdx: 8, types: ["BLISTER", "DEVIATOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPROTECTIVEDEVICE": { attrs: 9, typeIdx: 8, types: ["ANTI_ARCING_DEVICE", "CIRCUITBREAKER", "EARTHINGSWITCH", "EARTHLEAKAGECIRCUITBREAKER", "FUSEDISCONNECTOR", "RESIDUALCURRENTCIRCUITBREAKER", "RESIDUALCURRENTSWITCH", "SPARKGAP", "VARISTOR", "VOLTAGELIMITER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPROTECTIVEDEVICETRIPPINGUNIT": { attrs: 9, typeIdx: 8, types: ["ELECTROMAGNETIC", "ELECTRONIC", "RESIDUALCURRENT", "THERMAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPUMP": { attrs: 9, typeIdx: 8, types: ["CIRCULATOR", "ENDSUCTION", "SPLITCASE", "SUBMERSIBLEPUMP", "SUMPPUMP", "VERTICALINLINE", "VERTICALTURBINE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAIL": { attrs: 9, typeIdx: 8, types: ["BLADE", "CHECKRAIL", "GUARDRAIL", "RACKRAIL", "RAIL", "STOCKRAIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAILING": { attrs: 9, typeIdx: 8, types: ["BALUSTRADE", "FENCE", "GUARDRAIL", "HANDRAIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAMP": { attrs: 9, typeIdx: 8, types: ["HALF_TURN_RAMP", "QUARTER_TURN_RAMP", "SPIRAL_RAMP", "STRAIGHT_RUN_RAMP", "TWO_QUARTER_TURN_RAMP", "TWO_STRAIGHT_RUN_RAMP", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAMPFLIGHT": { attrs: 9, typeIdx: 8, types: ["SPIRAL", "STRAIGHT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCREINFORCEDSOIL": { attrs: 9, typeIdx: 8, types: ["DYNAMICALLYCOMPACTED", "GROUTED", "REPLACED", "ROLLERCOMPACTED", "SURCHARGEPRELOADED", "VERTICALLYDRAINED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCREINFORCINGBAR": { attrs: 14, typeIdx: 12, types: ["ANCHORING", "EDGE", "LIGATURE", "MAIN", "PUNCHING", "RING", "SHEAR", "SPACEBAR", "STUD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCREINFORCINGMESH": { attrs: 18, typeIdx: 17, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCROOF": { attrs: 9, typeIdx: 8, types: ["BARREL_ROOF", "BUTTERFLY_ROOF", "DOME_ROOF", "FLAT_ROOF", "FREEFORM", "GABLE_ROOF", "GAMBREL_ROOF", "HIPPED_GABLE_ROOF", "HIP_ROOF", "MANSARD_ROOF", "PAVILION_ROOF", "RAINBOW_ROOF", "SHED_ROOF", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSANITARYTERMINAL": { attrs: 9, typeIdx: 8, types: ["BATH", "BIDET", "CISTERN", "SANITARYFOUNTAIN", "SHOWER", "SINK", "TOILETPAN", "URINAL", "WASHHANDBASIN", "WCSEAT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSENSOR": { attrs: 9, typeIdx: 8, types: ["CO2SENSOR", "CONDUCTANCESENSOR", "CONTACTSENSOR", "COSENSOR", "EARTHQUAKESENSOR", "FIRESENSOR", "FLOWSENSOR", "FOREIGNOBJECTDETECTIONSENSOR", "FROSTSENSOR", "GASSENSOR", "HEATSENSOR", "HUMIDITYSENSOR", "IDENTIFIERSENSOR", "IONCONCENTRATIONSENSOR", "LEVELSENSOR", "LIGHTSENSOR", "MOISTURESENSOR", "MOVEMENTSENSOR", "OBSTACLESENSOR", "PHSENSOR", "PRESSURESENSOR", "RADIATIONSENSOR", "RADIOACTIVITYSENSOR", "RAINSENSOR", "SMOKESENSOR", "SNOWDEPTHSENSOR", "SOUNDSENSOR", "TEMPERATURESENSOR", "TRAINSENSOR", "TURNOUTCLOSURESENSOR", "WHEELSENSOR", "WINDSENSOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSHADINGDEVICE": { attrs: 9, typeIdx: 8, types: ["AWNING", "JALOUSIE", "SHUTTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSIGN": { attrs: 9, typeIdx: 8, types: ["MARKER", "MIRROR", "PICTORAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSIGNAL": { attrs: 9, typeIdx: 8, types: ["AUDIO", "MIXED", "VISUAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSLAB": { attrs: 9, typeIdx: 8, types: ["APPROACH_SLAB", "BASESLAB", "FLOOR", "LANDING", "PAVING", "ROOF", "SIDEWALK", "TRACKSLAB", "WEARING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSOLARDEVICE": { attrs: 9, typeIdx: 8, types: ["SOLARCOLLECTOR", "SOLARPANEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSPACEHEATER": { attrs: 9, typeIdx: 8, types: ["CONVECTOR", "RADIATOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTACKTERMINAL": { attrs: 9, typeIdx: 8, types: ["BIRDCAGE", "COWL", "RAINWATERHOPPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTAIR": { attrs: 9, typeIdx: 8, types: ["CURVED_RUN_STAIR", "DOUBLE_RETURN_STAIR", "HALF_TURN_STAIR", "HALF_WINDING_STAIR", "LADDER", "QUARTER_TURN_STAIR", "QUARTER_WINDING_STAIR", "SPIRAL_STAIR", "STRAIGHT_RUN_STAIR", "THREE_QUARTER_TURN_STAIR", "THREE_QUARTER_WINDING_STAIR", "TWO_CURVED_RUN_STAIR", "TWO_QUARTER_TURN_STAIR", "TWO_QUARTER_WINDING_STAIR", "TWO_STRAIGHT_RUN_STAIR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTAIRFLIGHT": { attrs: 13, typeIdx: 12, types: ["CURVED", "FREEFORM", "SPIRAL", "STRAIGHT", "WINDER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSURFACEFEATURE": { attrs: 9, typeIdx: 8, types: ["DEFECT", "HATCHMARKING", "LINEMARKING", "MARK", "NONSKIDSURFACING", "PAVEMENTSURFACEMARKING", "RUMBLESTRIP", "SYMBOLMARKING", "TAG", "TRANSVERSERUMBLESTRIP", "TREATMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSWITCHINGDEVICE": { attrs: 9, typeIdx: 8, types: ["CONTACTOR", "DIMMERSWITCH", "EMERGENCYSTOP", "KEYPAD", "MOMENTARYSWITCH", "RELAY", "SELECTORSWITCH", "STARTER", "START_AND_STOP_EQUIPMENT", "SWITCHDISCONNECTOR", "TOGGLESWITCH", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSYSTEMFURNITUREELEMENT": { attrs: 9, typeIdx: 8, types: ["PANEL", "SUBRACK", "WORKSURFACE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTANK": { attrs: 9, typeIdx: 8, types: ["BASIN", "BREAKPRESSURE", "EXPANSION", "FEEDANDEXPANSION", "OILRETENTIONTRAY", "PRESSUREVESSEL", "STORAGE", "VESSEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDON": { attrs: 17, typeIdx: 9, types: ["BAR", "COATED", "STRAND", "WIRE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDONANCHOR": { attrs: 10, typeIdx: 9, types: ["COUPLER", "FIXED_END", "TENSIONING_END", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDONCONDUIT": { attrs: 10, typeIdx: 9, types: ["COUPLER", "DIABOLO", "DUCT", "GROUTING_DUCT", "TRUMPET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTRACKELEMENT": { attrs: 9, typeIdx: 8, types: ["BLOCKINGDEVICE", "DERAILER", "FROG", "HALF_SET_OF_BLADES", "SLEEPER", "SPEEDREGULATOR", "TRACKENDOFALIGNMENT", "VEHICLESTOP", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTRANSFORMER": { attrs: 9, typeIdx: 8, types: ["CHOPPER", "COMBINED", "CURRENT", "FREQUENCY", "INVERTER", "RECTIFIER", "VOLTAGE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTRANSPORTELEMENT": { attrs: 9, typeIdx: 8, types: ["CRANEWAY", "ELEVATOR", "ESCALATOR", "HAULINGGEAR", "LIFTINGGEAR", "MOVINGWALKWAY", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTUBEBUNDLE": { attrs: 9, typeIdx: 8, types: ["FINNED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCUNITARYCONTROLELEMENT": { attrs: 9, typeIdx: 8, types: ["ALARMPANEL", "BASESTATIONCONTROLLER", "COMBINED", "CONTROLPANEL", "GASDETECTIONPANEL", "HUMIDISTAT", "INDICATORPANEL", "MIMICPANEL", "THERMOSTAT", "WEATHERSTATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCUNITARYEQUIPMENT": { attrs: 9, typeIdx: 8, types: ["AIRCONDITIONINGUNIT", "AIRHANDLER", "DEHUMIDIFIER", "ROOFTOPUNIT", "SPLITSYSTEM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVALVE": { attrs: 9, typeIdx: 8, types: ["AIRRELEASE", "ANTIVACUUM", "CHANGEOVER", "CHECK", "COMMISSIONING", "DIVERTING", "DOUBLECHECK", "DOUBLEREGULATING", "DRAWOFFCOCK", "FAUCET", "FLUSHING", "GASCOCK", "GASTAP", "ISOLATING", "MIXING", "PRESSUREREDUCING", "PRESSURERELIEF", "REGULATING", "SAFETYCUTOFF", "STEAMTRAP", "STOPCOCK", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVEHICLE": { attrs: 9, typeIdx: 8, types: ["CARGO", "ROLLINGSTOCK", "VEHICLE", "VEHICLEAIR", "VEHICLEMARINE", "VEHICLETRACKED", "VEHICLEWHEELED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVIBRATIONDAMPER": { attrs: 9, typeIdx: 8, types: ["BACKDRAFTDAMPER", "BALANCINGDAMPER", "BLASTDAMPER", "CONTROLDAMPER", "FIREDAMPER", "FIRESMOKEDAMPER", "FUMEHOODEXHAUST", "GRAVITYDAMPER", "GRAVITYRELIEFDAMPER", "RELIEFDAMPER", "SMOKEDAMPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVIBRATIONISOLATOR": { attrs: 9, typeIdx: 8, types: ["BASE", "COMPRESSION", "SPRING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVIRTUALELEMENT": { attrs: 9, typeIdx: 8, types: ["BOUNDARY", "CLEARANCE", "PROVISIONFORVOID", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVOIDINGFEATURE": { attrs: 9, typeIdx: 8, types: ["CHAMFER", "CUTOUT", "EDGE", "HOLE", "MITER", "NOTCH", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWALL": { attrs: 9, typeIdx: 8, types: ["ELEMENTEDWALL", "MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "POLYGONAL", "RETAININGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "WAVEWALL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWALLSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["ELEMENTEDWALL", "MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "POLYGONAL", "RETAININGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "WAVEWALL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWASTETERMINAL": { attrs: 9, typeIdx: 8, types: ["FLOORTRAP", "FLOORWASTE", "GULLYSUMP", "GULLYTRAP", "ROOFDRAIN", "WASTEDISPOSALUNIT", "WASTETRAP", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWINDOW": { attrs: 13, typeIdx: 10, types: ["LIGHTDOME", "SKYLIGHT", "WINDOW", "USERDEFINED", "NOTDEFINED"] }
+        };
+
+
+        // --- Shunting-Yard Boolean Query Processing Engine ---
+        class BooleanFilterEngine {
+            constructor() {
+                this.precedence = { 'NOT': 3, 'AND': 2, 'OR': 1 };
+            }
+
+            tokenize(query) {
+                // Quoted phrases, parens, or any run of non-space/non-paren characters
+                // as one token — this is what keeps glued punctuation like "600-600" or
+                // "2400/1200" intact as a single term: it's a whole run, not "-" alone,
+                // so it never gets misread as the NOT operator below. Only a token that
+                // IS exactly "+", "|", or "-" (its own standalone chunk) becomes an
+                // operator — same principle that already protected "BRAND" from being
+                // misread as containing "AND".
+                const regex = /("[^"]+"|'[^']+'|[()]|[^\s()]+)/g;
+                const matches = query.match(regex) || [];
+                return matches.map(token => {
+                    if (token === '(' || token === ')') {
+                        return { type: 'OPERATOR', value: token };
+                    }
+                    const upper = token.toUpperCase();
+                    if (upper === 'AND' || token === '+') return { type: 'OPERATOR', value: 'AND' };
+                    if (upper === 'OR' || token === '|') return { type: 'OPERATOR', value: 'OR' };
+                    if (upper === 'NOT' || token === '-') return { type: 'OPERATOR', value: 'NOT' };
+                    const cleanValue = token.replace(/^["']|["']$/g, '').toLowerCase();
+                    return { type: 'TERM', value: cleanValue };
+                });
+            }
+
+            compile(tokens) {
+                const outputQueue = [];
+                const operatorStack = [];
+                for (const token of tokens) {
+                    if (token.type === 'TERM') {
+                        outputQueue.push(token);
+                    } else if (token.type === 'OPERATOR') {
+                        const val = token.value;
+                        if (val === '(') {
+                            operatorStack.push(val);
+                        } else if (val === ')') {
+                            while (operatorStack.length && operatorStack[operatorStack.length - 1] !== '(') {
+                                outputQueue.push({ type: 'OPERATOR', value: operatorStack.pop() });
+                            }
+                            operatorStack.pop(); 
+                        } else {
+                            while (
+                                operatorStack.length && 
+                                operatorStack[operatorStack.length - 1] !== '(' && 
+                                this.precedence[operatorStack[operatorStack.length - 1]] >= this.precedence[val]
+                            ) {
+                                outputQueue.push({ type: 'OPERATOR', value: operatorStack.pop() });
+                            }
+                            operatorStack.push(val);
+                        }
+                    }
+                }
+                while (operatorStack.length) {
+                    outputQueue.push({ type: 'OPERATOR', value: operatorStack.pop() });
+                }
+                return outputQueue;
+            }
+
+            evaluate(postfix, context) {
+                if (postfix.length === 0) return true;
+                const stack = [];
+
+                for (const token of postfix) {
+                    if (token.type === 'TERM') {
+                        let hit;
+                        if (token.value.startsWith('#') && /^#\d+$/.test(token.value)) {
+                            // Exact Express ID lookup — bypasses substring matching entirely,
+                            // since plain digits alone would otherwise noisily match unrelated
+                            // IDs (e.g. searching "123" hitting #1234, #5123, #9123...).
+                            hit = context.expressId === parseInt(token.value.slice(1), 10);
+                        } else {
+                            hit = context.searchBlob.includes(token.value);
+                        }
+                        stack.push(hit);
+                    } else if (token.type === 'OPERATOR') {
+                        if (token.value === 'NOT') {
+                            if (stack.length < 1) return false;
+                            const operand = stack.pop();
+                            stack.push(!operand);
+                        } else if (token.value === 'AND') {
+                            if (stack.length < 2) return false;
+                            const b = stack.pop();
+                            const a = stack.pop();
+                            stack.push(a && b);
+                        } else if (token.value === 'OR') {
+                            if (stack.length < 2) return false;
+                            const b = stack.pop();
+                            const a = stack.pop();
+                            stack.push(a || b);
+                        }
+                    }
+                }
+                return stack.length === 1 ? stack[0] : false;
+            }
+
+            // context: { searchBlob, expressId }. searchBlob is a lowercase composite
+            // of Name + GlobalID + Tag (NOT the raw Express ID digits — those only ever
+            // match via the "#1234" exact-lookup form above, to keep plain-number
+            // searches from noisily matching unrelated IDs). expressId is the element's
+            // numeric #ID for the "#1234" exact form.
+            match(context, queryText) {
+                if (!queryText || !queryText.trim()) return true;
+                try {
+                    const tokens = this.tokenize(queryText);
+                    const postfix = this.compile(tokens);
+                    return this.evaluate(postfix, context);
+                } catch (e) {
+                    return false; 
+                }
+            }
+        }
+
+        // --- Core Application State & Storage ---
+        const filterEngine = new BooleanFilterEngine();
+        let ifcLines = [];
+        let parsedElements = []; 
+        let selectedElementIds = new Set();
+        let originalFileBaseName = 'ReClassified_Model'; // fallback if no file loaded yet
+        let activeTab = 'proxies'; 
+        let initialProxyCount = 0;
+
+        // DOM Cache Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadText = document.getElementById('uploadText');
+        const fileMeta = document.getElementById('fileMeta');
+        const elementListContainer = document.getElementById('elementListContainer');
+        const previewListContainer = document.getElementById('previewListContainer');
+        const booleanSearch = document.getElementById('booleanSearch');
+        const searchStatus = document.getElementById('searchStatus');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const selectionCountText = document.getElementById('selectionCountText');
+        const btnApply = document.getElementById('btnApply');
+        const btnExport = document.getElementById('btnExport');
+        const burnDownText = document.getElementById('burnDownText');
+        const burnDownFill = document.getElementById('burnDownFill');
+
+        // Form fields
+        const targetClass = document.getElementById('targetClass');
+        const userdefinedType = document.getElementById('userdefinedType');
+        const renamePattern = document.getElementById('renamePattern');
+        const description = document.getElementById('description');
+
+        // Progress elements
+        const progressOverlay = document.getElementById('progressOverlay');
+        const progressTitle = document.getElementById('progressTitle');
+        const progressSub = document.getElementById('progressSub');
+        const progressOverlayFill = document.getElementById('progressOverlayFill');
+
+        function showProgress(title, percentage, sub = "") {
+            progressOverlay.style.display = 'flex';
+            progressTitle.innerText = title;
+            progressOverlayFill.style.width = `${percentage}%`;
+            progressSub.innerText = sub || `Step execution... ${percentage}% completed.`;
+        }
+
+        function hideProgress() {
+            progressOverlay.style.display = 'none';
+        }
+
+        // --- Search-as-you-type index: class names AND their PredefinedType enum values ---
+        // Lets the user find a class by remembering the Type instead (e.g. typing
+        // "stud" surfaces IFCMEMBER because STUD is one of its PredefinedType values).
+        const classSuggestionsEl = document.getElementById('classSuggestions');
+        const CLASS_SEARCH_INDEX = (() => {
+            const index = [];
+            Object.keys(IFC4X3_SCHEMA).sort().forEach(cls => {
+                index.push({ cls, matchText: cls, via: null });
+                const types = IFC4X3_SCHEMA[cls].types;
+                if (types) {
+                    types.forEach(t => {
+                        if (t === 'USERDEFINED' || t === 'NOTDEFINED') return; // universal, not useful to search on
+                        index.push({ cls, matchText: t, via: t });
+                    });
+                }
+            });
+            return index;
+        })();
+
+        function onTargetClassInput() {
+            const query = targetClass.value.trim().toUpperCase();
+            onClassSelectionChanged(); // keep existing PredefinedType-dropdown behaviour live
+
+            if (!query) {
+                classSuggestionsEl.style.display = 'none';
+                classSuggestionsEl.innerHTML = '';
+                return;
+            }
+
+            // Direct class-name matches first, then PredefinedType-name matches,
+            // each internally sorted so "starts with" beats "contains".
+            const classMatches = [];
+            const typeMatches = [];
+            const seenClasses = new Set();
+
+            CLASS_SEARCH_INDEX.forEach(entry => {
+                if (!entry.matchText.includes(query)) return;
+                if (entry.via === null) {
+                    classMatches.push(entry);
+                } else {
+                    if (seenClasses.has(entry.cls)) return; // one suggestion per class even if multiple types match
+                    seenClasses.add(entry.cls);
+                    typeMatches.push(entry);
+                }
+            });
+
+            const byStartsWith = (a, b) => {
+                const aStarts = a.matchText.startsWith(query) ? 0 : 1;
+                const bStarts = b.matchText.startsWith(query) ? 0 : 1;
+                return aStarts - bStarts || a.matchText.localeCompare(b.matchText);
+            };
+            classMatches.sort(byStartsWith);
+            typeMatches.sort(byStartsWith);
+
+            const results = [...classMatches, ...typeMatches].slice(0, 7);
+            renderClassSuggestions(results);
+        }
+
+        function renderClassSuggestions(results) {
+            if (results.length === 0) {
+                classSuggestionsEl.style.display = 'none';
+                classSuggestionsEl.innerHTML = '';
+                return;
+            }
+            classSuggestionsEl.innerHTML = results.map((r, i) => `
+                <div class="suggestion-item${i === 0 ? ' active' : ''}" data-cls="${r.cls}" data-via="${r.via || ''}">
+                    <span class="sugg-class">${r.cls}</span>
+                    ${r.via ? `<span class="sugg-via">via ${r.via}</span>` : ''}
+                </div>
+            `).join('');
+            classSuggestionsEl.style.display = 'block';
+            classSuggestionsEl.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // keep focus in input, avoid losing selection before click registers
+                    pickClassSuggestion(item.dataset.cls, item.dataset.via || null);
+                });
+            });
+        }
+
+        function pickClassSuggestion(cls, viaType) {
+            targetClass.value = cls;
+            classSuggestionsEl.style.display = 'none';
+            onClassSelectionChanged();
+            if (viaType) {
+                // Pre-select the PredefinedType the user actually searched for
+                const preSelect = document.getElementById('predefinedType');
+                if (preSelect && !preSelect.disabled) preSelect.value = viaType;
+            }
+            updateChangesPreview();
+        }
+
+        // Close the dropdown on outside click
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('classInputContainer').contains(e.target)) {
+                classSuggestionsEl.style.display = 'none';
+            }
+        });
+
+        // Watch form fields to trigger preview rendering
+        [targetClass, userdefinedType, renamePattern, description].forEach(elem => {
+            elem.addEventListener('input', updateChangesPreview);
+        });
+
+        // Keep User Defined Type in caps as the user types — not a hard buildingSMART
+        // rule (only the fixed PredefinedType enum values like NOTDEFINED are
+        // mandated uppercase), but it keeps custom labels visually consistent with
+        // them. Cursor position is preserved since upper-casing never changes length.
+        userdefinedType.addEventListener('input', () => {
+            const pos = userdefinedType.selectionStart;
+            userdefinedType.value = userdefinedType.value.toUpperCase();
+            userdefinedType.setSelectionRange(pos, pos);
+        });
+
+        fileInput.addEventListener('change', handleFileSelected);
+
+        function handleFileSelected(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Strip the .ifc extension (case-insensitive) so we can reuse the base
+            // name when building the export filename suggestion later.
+            originalFileBaseName = file.name.replace(/\.ifc$/i, '');
+
+            showProgress("Loading file from disk...", 0, `Initializing read for ${file.name}`);
+            
+            const reader = new FileReader();
+            
+            reader.onprogress = function(evt) {
+                if (evt.lengthComputable) {
+                    const percentLoaded = Math.round((evt.loaded / evt.total) * 100);
+                    showProgress("Reading file structure...", percentLoaded, `Loading raw data: ${percentLoaded}%`);
+                }
+            };
+
+            reader.onload = async function(evt) {
+                showProgress("Splitting lines...", 100, "Preparing data array segments...");
+                await new Promise(r => setTimeout(r, 50)); // Allow UI painting
+
+                const text = evt.target.result;
+                ifcLines = text.split(/\r?\n/);
+                
+                // Trigger fully optimized asynchronous parsing engine
+                await parseAllIFCProductInstancesAsync();
+                
+                fileMeta.innerText = `Loaded ${file.name} successfully. Indexed ${parsedElements.length} elements.`;
+                fileMeta.style.display = 'block';
+                uploadText.innerText = "File loaded. Drop a new file to replace.";
+                btnExport.disabled = false;
+                
+                initialProxyCount = parsedElements.filter(e => e.originalClass === 'IFCBUILDINGELEMENTPROXY').length;
+                
+                updateTabBubbles();
+                changeAuditStep('proxies');
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // --- Optimized High-Speed Asynchronous Parser ---
+        async function parseAllIFCProductInstancesAsync() {
+            parsedElements = [];
+            selectedElementIds.clear();
+
+            const totalLines = ifcLines.length;
+            const batchSize = 35000; // Yield to browser main thread every 35k lines to avoid freeze
+
+            for (let i = 0; i < totalLines; i++) {
+                const line = ifcLines[i];
+                
+                // Fast-reject non-instance rows using character checks
+                if (!line || line[0] !== '#') continue;
+
+                const eqIdx = line.indexOf('=');
+                if (eqIdx === -1) continue;
+
+                const parenIdx = line.indexOf('(', eqIdx);
+                if (parenIdx === -1) continue;
+
+                // Instantly slice candidate class name without complex Regex
+                const className = line.substring(eqIdx + 1, parenIdx).trim().toUpperCase();
+
+                if (className === 'IFCBUILDINGELEMENTPROXY' || IFC4X3_SCHEMA.hasOwnProperty(className)) {
+                    const stepId = parseInt(line.substring(1, eqIdx).trim());
+                    if (isNaN(stepId)) continue;
+
+                    const lastParenIdx = line.lastIndexOf(')');
+                    if (lastParenIdx === -1 || lastParenIdx < parenIdx) continue;
+
+                    const argsString = line.substring(parenIdx + 1, lastParenIdx);
+                    const parsedArgs = splitStepArgs(argsString);
+                    
+                    // Fixed index-2 lookup to correctly grab the 'Name' string attribute
+                    const rawName = parsedArgs[2] || '';
+                    const nameValue = stripQuotes(rawName);
+
+                    parsedElements.push({
+                        id: stepId,
+                        originalClass: className,
+                        currentClass: className,
+                        originalName: nameValue,
+                        currentName: nameValue,
+                        args: parsedArgs,
+                        lineIndex: i,
+                        isModified: false,
+                        originalArgs: [...parsedArgs]
+                    });
+                }
+
+                // Asynchronous chunk yielding
+                if (i % batchSize === 0) {
+                    const progressPct = Math.round((i / totalLines) * 100);
+                    showProgress("Parsing IFC data structure...", progressPct, `Processed line ${i.toLocaleString()} of ${totalLines.toLocaleString()} (${progressPct}%)`);
+                    await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI thread repaint
+                }
+            }
+            hideProgress();
+        }
+
+        function splitStepArgs(argString) {
+            let args = [];
+            let current = "";
+            let inQuote = false;
+            let parenDepth = 0;
+            for (let i = 0; i < argString.length; i++) {
+                let char = argString[i];
+                if (char === "'") {
+                    inQuote = !inQuote;
+                    current += char;
+                } else if (char === "(" && !inQuote) {
+                    parenDepth++;
+                    current += char;
+                } else if (char === ")" && !inQuote) {
+                    parenDepth--;
+                    current += char;
+                } else if (char === "," && !inQuote && parenDepth === 0) {
+                    args.push(current.trim());
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+            args.push(current.trim());
+            return args;
+        }
+
+        function stripQuotes(str) {
+            if (str && str.startsWith && str.startsWith("'") && str.endsWith("'")) {
+                return str.substring(1, str.length - 1);
+            }
+            return str;
+        }
+
+        // Normalises a raw STEP argument for display/search: strips quotes and turns
+        // IFC's null placeholder ($) into an empty string, so an empty Tag field
+        // doesn't show as a literal "$" or accidentally match a search for "$".
+        function displayVal(raw) {
+            const s = stripQuotes(raw);
+            return (s === '$' || s === undefined || s === null) ? '' : s;
+        }
+
+        // --- Dynamic Dropdown Population on Selection ---
+        // Fired when the PredefinedType dropdown itself changes. Picking a standard
+        // enum value means you're no longer using a custom USERDEFINED type, so any
+        // leftover text in User Defined Type is cleared to avoid the two conflicting
+        // (Apply gives USERDEFINED priority over the dropdown selection otherwise).
+        function onPredefinedTypeChanged() {
+            if (userdefinedType.value.trim()) {
+                userdefinedType.value = '';
+            }
+            updateChangesPreview();
+        }
+
+        // Tracks the last class the fields were cleared for, so we only clear once
+        // per genuinely new class selection — not on every keystroke while typing.
+        let lastClassForFieldClear = null;
+
+        function onClassSelectionChanged() {
+            const selectedClass = targetClass.value.toUpperCase();
+            const preTypeContainer = document.getElementById('preTypeContainer');
+
+            const schemaEntry = IFC4X3_SCHEMA[selectedClass];
+
+            // Clear User Defined Type / Rename Pattern / Description once the typed
+            // text resolves to a genuinely new, recognised class — not on every
+            // keystroke while still typing (an unrecognised in-progress string never
+            // triggers this, so nothing gets wiped out mid-type).
+            if (schemaEntry && selectedClass !== lastClassForFieldClear) {
+                userdefinedType.value = '';
+                renamePattern.value = '';
+                description.value = '';
+            }
+            if (schemaEntry) lastClassForFieldClear = selectedClass;
+
+            if (schemaEntry && schemaEntry.types === null) {
+                // This class exists in the schema but has no PredefinedType attribute at all
+                // (e.g. IFCKERB's final argument is a boolean "Mountable", not an enum).
+                // Writing an enum string into that slot would corrupt the entity, so we
+                // deliberately give it nothing to select and skip PredefinedType on Apply.
+                preTypeContainer.innerHTML = `
+                    <label>Predefined Type (IFC Enum)</label>
+                    <select id="predefinedType" disabled>
+                        <option value="">— ${selectedClass} has no PredefinedType —</option>
+                    </select>
+                `;
+            } else if (schemaEntry) {
+                const allowedTypes = schemaEntry.types;
+                preTypeContainer.innerHTML = `
+                    <label>Predefined Type (IFC Enum)</label>
+                    <select id="predefinedType" onchange="onPredefinedTypeChanged()">
+                        ${allowedTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
+                    </select>
+                `;
+            } else {
+                // Class typed by hand isn't in the embedded schema table. Reclassification
+                // still proceeds (generic IfcElement signature: 9 args, PredefinedType at
+                // index 8), but only the two universal enum values are offered here.
+                preTypeContainer.innerHTML = `
+                    <label>Predefined Type (IFC Enum)</label>
+                    <select id="predefinedType" onchange="onPredefinedTypeChanged()">
+                        <option value="NOTDEFINED">NOTDEFINED</option>
+                        <option value="USERDEFINED">USERDEFINED</option>
+                    </select>
+                `;
+            }
+            updateChangesPreview();
+        }
+
+        // --- Core UI & Navigation Logics ---
+        function changeAuditStep(step) {
+            activeTab = step;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab${step.charAt(0).toUpperCase() + step.slice(1)}`).classList.add('active');
+            
+            selectedElementIds.clear();
+            selectAllCheckbox.checked = false;
+            runFilter();
+        }
+
+        function updateTabBubbles() {
+            const counts = { proxies: 0, reclassed: 0, all: 0 };
+            parsedElements.forEach(elem => {
+                if (elem.currentClass === 'IFCBUILDINGELEMENTPROXY') counts.proxies++;
+                if (elem.isModified) counts.reclassed++;
+                counts.all++;
+            });
+
+            document.getElementById('cntProxies').innerText = counts.proxies;
+            document.getElementById('cntReclassed').innerText = counts.reclassed;
+            document.getElementById('cntAll').innerText = counts.all;
+
+            const cleaned = initialProxyCount - counts.proxies;
+            const progressPct = initialProxyCount > 0 ? (cleaned / initialProxyCount) * 100 : 0;
+            burnDownText.innerText = `${cleaned} / ${initialProxyCount} Cleaned`;
+            burnDownFill.style.width = `${progressPct}%`;
+        }
+
+        function getFilteredElements() {
+            const query = booleanSearch.value.trim();
+            return parsedElements.filter(elem => {
+                if (activeTab === 'proxies' && elem.currentClass !== 'IFCBUILDINGELEMENTPROXY') return false;
+                if (activeTab === 'reclassed' && !elem.isModified) return false;
+
+                // Tag sits at index 7 for every IfcElement subtype — it's one of the
+                // eight base attributes every class inherits before its own extras,
+                // so this position is constant regardless of currentClass.
+                const globalId = displayVal(elem.args[0]);
+                const tag = displayVal(elem.args[7]);
+                const searchBlob = `${elem.currentName || ''} ${globalId} ${tag}`.toLowerCase();
+
+                return filterEngine.match({ searchBlob, expressId: elem.id }, query);
+            });
+        }
+
+        function runFilter() {
+            const visibleElements = getFilteredElements();
+            searchStatus.innerText = `${visibleElements.length} Matched`;
+            renderElementList(visibleElements);
+            updateSelectionMetrics();
+        }
+
+        function renderElementList(elements) {
+            elementListContainer.innerHTML = "";
+            if (elements.length === 0) {
+                elementListContainer.innerHTML = `<div class="text-center p-20" style="color: var(--text-muted); font-size: 13px;">No elements match your active filter logic.</div>`;
+                return;
+            }
+
+            elements.forEach(elem => {
+                const item = document.createElement('div');
+                item.className = `element-item ${selectedElementIds.has(elem.id) ? 'selected' : ''}`;
+                item.onclick = (e) => {
+                    if (e.target.type !== 'checkbox' && !e.target.closest('.copy-id-btn')) {
+                        toggleElementSelection(elem.id);
+                    }
+                };
+
+                const globalId = displayVal(elem.args[0]);
+                const tag = displayVal(elem.args[7]);
+
+                item.innerHTML = `
+                    <input type="checkbox" ${selectedElementIds.has(elem.id) ? 'checked' : ''} onchange="toggleElementSelection(${elem.id})">
+                    <div class="element-info">
+                        <div class="element-id-row">
+                            <span class="element-id">#${elem.id}</span>
+                            <button class="copy-id-btn" title="Copy Express ID" onclick="copyIdValue(event, '${elem.id}')">⧉</button>
+                            <span style="font-size:11px; color:var(--text-muted);">GlobalID: ${globalId || '<em>none</em>'}</span>
+                            ${globalId ? `<button class="copy-id-btn" title="Copy GlobalID" onclick="copyIdValue(event, '${globalId}')">⧉</button>` : ''}
+                            ${tag ? `<span style="font-size:11px; color:var(--text-muted);">Tag: ${tag}</span><button class="copy-id-btn" title="Copy Tag" onclick="copyIdValue(event, '${tag}')">⧉</button>` : ''}
+                        </div>
+                        <div class="element-name">${elem.currentName || '<em>[Unnamed Entity]</em>'}</div>
+                        <div class="element-class-badge">${elem.currentClass}</div>
+                    </div>
+                `;
+                elementListContainer.appendChild(item);
+            });
+        }
+
+        // Copies a Express ID / GlobalID / Tag value to the clipboard so it can be
+        // pasted straight into ICit (or anywhere else) to cross-reference the element.
+        function copyIdValue(event, value) {
+            event.stopPropagation(); // don't also toggle row selection
+            navigator.clipboard.writeText(value).catch(err => console.error('Copy failed:', err));
+        }
+
+        function toggleElementSelection(id) {
+            if (selectedElementIds.has(id)) {
+                selectedElementIds.delete(id);
+            } else {
+                selectedElementIds.add(id);
+            }
+            runFilter();
+        }
+
+        function toggleSelectAll(checked) {
+            const visible = getFilteredElements();
+            if (checked) {
+                visible.forEach(elem => selectedElementIds.add(elem.id));
+            } else {
+                visible.forEach(elem => selectedElementIds.delete(elem.id));
+            }
+            runFilter();
+        }
+
+        function updateSelectionMetrics() {
+            const size = selectedElementIds.size;
+            selectionCountText.innerText = `${size} Selected`;
+            btnApply.disabled = size === 0;
+            btnApply.innerText = `Apply to Selected (${size})`;
+            updateChangesPreview();
+        }
+
+        // --- Core Rules Application & Positional Array Changes Engine ---
+        function applyBulkReclass() {
+            if (selectedElementIds.size === 0) return;
+
+            const targetCls = targetClass.value.toUpperCase();
+            const preType = document.getElementById('predefinedType').value;
+            const userType = userdefinedType.value.trim();
+            const pattern = renamePattern.value.trim();
+            const desc = description.value.trim();
+
+            parsedElements.forEach(elem => {
+                if (selectedElementIds.has(elem.id)) {
+                    elem.currentClass = targetCls;
+                    elem.isModified = true;
+
+                    let updatedName = elem.originalName;
+                    if (pattern) {
+                        updatedName = pattern.replace(/\[Name\]/g, elem.originalName);
+                    }
+                    elem.currentName = updatedName;
+
+                    // Re-instantiate base args array to preserve references
+                    if (!Array.isArray(elem.args)) {
+                        elem.args = [...elem.originalArgs];
+                    }
+
+                    // Safely modify positional attributes
+                    elem.args[2] = `'${updatedName}'`; // Name
+                    elem.args[3] = desc ? `'${desc}'` : '$'; // Description
+
+                    // Dynamic element parameter signature padding matching target schema requirements.
+                    // Unrecognised (hand-typed) classes fall back to the generic IfcElement
+                    // signature: 9 arguments, PredefinedType at index 8.
+                    const schemaDef = IFC4X3_SCHEMA[targetCls] || { attrs: 9, typeIdx: 8 };
+                    const targetAttributeCount = schemaDef.attrs;
+                    const typeIndex = schemaDef.typeIdx; // null for classes with no PredefinedType at all
+
+                    while (elem.args.length < targetAttributeCount) {
+                        elem.args.push('$');
+                    }
+                    if (elem.args.length > targetAttributeCount) {
+                        elem.args = elem.args.slice(0, targetAttributeCount);
+                    }
+
+                    // Build and place PredefinedType & ObjectType fields
+                    if (typeIndex === null || typeIndex === undefined) {
+                        // Target class has no PredefinedType slot (e.g. IFCKERB) -- never write
+                        // an enum string into a positional argument that isn't one, since that
+                        // silently corrupts the STEP entity. ObjectType can still carry free text.
+                        if (userType) {
+                            elem.args[4] = `'${userType}'`;
+                        }
+                    } else if (userType) {
+                        elem.args[typeIndex] = '.USERDEFINED.';
+                        elem.args[4] = `'${userType}'`; // ObjectType is index 4
+                    } else if (preType) {
+                        elem.args[typeIndex] = `.${preType.toUpperCase()}.`;
+                        elem.args[4] = '$'; // Clear ObjectType so we remain compliant
+                    }
+                }
+            });
+
+            selectedElementIds.clear();
+            selectAllCheckbox.checked = false;
+            
+            updateTabBubbles();
+            runFilter();
+        }
+
+        function updateChangesPreview() {
+            previewListContainer.innerHTML = "";
+            if (selectedElementIds.size === 0) {
+                previewListContainer.innerHTML = `<div class="text-center p-20" style="color: var(--text-muted); font-size: 12px;">Select elements and input changes on the left to see comparative previews.</div>`;
+                return;
+            }
+
+            const targetCls = targetClass.value.toUpperCase() || '[UNSPECIFIED]';
+            const preType = document.getElementById('predefinedType') ? document.getElementById('predefinedType').value : 'NOTDEFINED';
+            const userType = userdefinedType.value.trim();
+            const pattern = renamePattern.value.trim();
+
+            const previewLimit = 8;
+            let count = 0;
+
+            for (const elem of parsedElements) {
+                if (selectedElementIds.has(elem.id)) {
+                    count++;
+                    if (count > previewLimit) {
+                        const extra = document.createElement('div');
+                        extra.style.textAlign = 'center';
+                        extra.style.fontSize = '11px';
+                        extra.style.color = 'var(--text-muted)';
+                        extra.innerText = `...and ${selectedElementIds.size - previewLimit} other element(s).`;
+                        previewListContainer.appendChild(extra);
+                        break;
+                    }
+
+                    let previewName = elem.originalName;
+                    if (pattern) {
+                        previewName = pattern.replace(/\[Name\]/g, elem.originalName);
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'preview-item';
+                    card.innerHTML = `
+                        <div style="font-weight:700; margin-bottom:6px; color: var(--accent);">Instance #${elem.id}</div>
+                        <div class="preview-line">
+                            <span class="preview-label">Class:</span>
+                            <span class="preview-val">${elem.currentClass} <span class="preview-change-arrow">→</span> ${targetCls}</span>
+                        </div>
+                        <div class="preview-line">
+                            <span class="preview-label">Predefined Type:</span>
+                            <span class="preview-val">${userType ? 'USERDEFINED' : preType}</span>
+                        </div>
+                        ${userType ? `
+                        <div class="preview-line">
+                            <span class="preview-label">Userdefined String:</span>
+                            <span class="preview-val" style="color: var(--warning);">${userType}</span>
+                        </div>` : ''}
+                        <div class="preview-line">
+                            <span class="preview-label">Name:</span>
+                            <span class="preview-val">${elem.originalName} <span class="preview-change-arrow">→</span> ${previewName}</span>
+                        </div>
+                    `;
+                    previewListContainer.appendChild(card);
+                }
+            }
+        }
+
+        // --- Optimized Asynchronous Export & Compilation Assembly ---
+        async function exportIFC() {
+            if (ifcLines.length === 0) return;
+
+            showProgress("Compiling modified IFC...", 0, "Initializing compiler arrays...");
+            await new Promise(r => setTimeout(r, 50));
+
+            const exportLines = [];
+            const totalLines = ifcLines.length;
+            const batchSize = 100000; // Asynchronous compilation step batches
+
+            // Hash map lookup indexing for instant resolution
+            const elementLookup = new Map();
+            parsedElements.forEach(elem => {
+                elementLookup.set(elem.id, elem);
+            });
+
+            const reclassedIds = new Set(parsedElements.filter(e => e.isModified).map(e => e.id));
+
+            for (let i = 0; i < totalLines; i++) {
+                let line = ifcLines[i];
+                
+                // Process modified element injections using character checks
+                if (line && line[0] === '#') {
+                    const eqIdx = line.indexOf('=');
+                    if (eqIdx !== -1) {
+                        const stepId = parseInt(line.substring(1, eqIdx));
+                        const elem = elementLookup.get(stepId);
+                        if (elem && elem.isModified) {
+                            const argsString = elem.args.join(',');
+                            line = `#${elem.id}= ${elem.currentClass.toUpperCase()}(${argsString});`;
+                        }
+                    }
+                }
+
+                // Asynchronous checks for IFCRELDEFINESBYTYPE adjustments
+                if (line && line.toUpperCase().includes('IFCRELDEFINESBYTYPE')) {
+                    const eqIdx = line.indexOf('=');
+                    const parenIdx = line.indexOf('(', eqIdx);
+                    const lastParenIdx = line.lastIndexOf(')');
+                    if (eqIdx !== -1 && parenIdx !== -1 && lastParenIdx !== -1) {
+                        const stepId = parseInt(line.substring(1, eqIdx));
+                        const argsStr = line.substring(parenIdx + 1, lastParenIdx);
+                        const args = splitStepArgs(argsStr);
+                        
+                        let relatedObjsStr = args[4]; // RelatedObjects index inside relationship
+                        if (relatedObjsStr && relatedObjsStr.startsWith('(') && relatedObjsStr.endsWith(')')) {
+                            const idsInside = relatedObjsStr.slice(1, -1).split(',').map(id => id.trim());
+                            const filteredIds = idsInside.filter(idStr => {
+                                const idNum = parseInt(idStr.replace('#', ''));
+                                return !reclassedIds.has(idNum);
+                            });
+
+                            if (filteredIds.length !== idsInside.length) {
+                                if (filteredIds.length === 0) {
+                                    line = `/* ReClass: Stripped empty Type-Relation #${stepId} */`;
+                                } else {
+                                    args[4] = `(${filteredIds.join(',')})`;
+                                    line = `#${stepId}= IFCRELDEFINESBYTYPE(${args.join(',')});`;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Append newline dynamically to avoid joining later
+                exportLines.push(line + '\n');
+
+                if (i % batchSize === 0) {
+                    const pct = Math.round((i / totalLines) * 100);
+                    showProgress("Assembling export model...", pct, `Processed line ${i.toLocaleString()} of ${totalLines.toLocaleString()}...`);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+
+            showProgress("Writing physical document...", 100, "Compiling native browser Blob transfer stream...");
+            await new Promise(r => setTimeout(r, 50));
+
+            const blob = new Blob(exportLines, { type: 'text/plain' });
+            const exportFileName = `ReClassified_${originalFileBaseName}.ifc`;
+
+            // Force a native Save/Save-As dialog rather than relying on the
+            // browser's own download setting (which may silently drop the file
+            // straight into Downloads). showSaveFilePicker gives a real dialog;
+            // it's Chromium-only (Chrome/Edge), so browsers without it fall back
+            // to the standard anchor-download behaviour.
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: exportFileName,
+                        types: [{ description: 'IFC Model', accept: { 'text/plain': ['.ifc'] } }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } catch (err) {
+                    // User cancelled the save dialog — treat as a no-op, not an error.
+                    if (err.name !== 'AbortError') {
+                        console.error('Save failed:', err);
+                        alert('Save failed: ' + err.message);
+                    }
+                }
+            } else {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = exportFileName;
+                link.click();
+            }
+
+            hideProgress();
+        }
+
+        // --- Drag & Drop Handler Implementations ---
+        const dropzone = document.getElementById('dropzone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.style.borderColor = 'var(--accent)';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.style.borderColor = 'var(--border)';
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelected({ target: fileInput });
+            }
+        });
+    </script>
+</body>
+</html>
