@@ -473,13 +473,35 @@
             background: var(--bg-tertiary);
             color: var(--text-main);
         }
+
+        /* Detected-schema status badge in the header */
+        .schema-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+        }
+        .schema-badge-ok {
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.08);
+        }
+        .schema-badge-warn {
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.4);
+            background: rgba(245, 158, 11, 0.08);
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>IFC ReClass 🛠️ <span class="version-badge">IFC 4x3 Browser Native Engine</span></h1>
-        <div style="display: flex; gap: 12px;">
+        <h1>IFC ReClass 🛠️ <span class="version-badge">IFC2X3 / IFC4 / IFC4X3 — Browser Native Engine</span></h1>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span id="schemaBadge" class="schema-badge">No file loaded</span>
             <button id="btnExport" class="btn btn-success" style="width: auto; padding: 6px 16px;" onclick="exportIFC()" disabled>Export .ifc File</button>
         </div>
     </header>
@@ -501,9 +523,10 @@
 
                 <!-- Active Search-as-you-type Target Class input (matches class names AND PredefinedType enum values) -->
                 <div class="form-group" id="classInputContainer" style="position: relative;">
-                    <label>Target IFC Class (4x3 Searchable — also matches Type names, e.g. "stud")</label>
+                    <label>Target IFC Class — Searchable (also matches Type names, e.g. "stud")</label>
                     <input type="text" id="targetClass" autocomplete="off" placeholder="Type to search e.g. IFCTRACK or STUD..." oninput="onTargetClassInput()" onfocus="this.select()">
                     <div id="classSuggestions" class="suggestion-dropdown"></div>
+                    <div id="crossSchemaWarning" style="display:none; font-size: 11px; color: var(--warning); margin-top: 6px; line-height: 1.4;"></div>
                 </div>
 
                 <!-- Dynamic Predefined Type Select Dropdown -->
@@ -616,15 +639,201 @@
     <!-- HTML Autocomplete Schema Target Datalist -->
 
     <script>
-        // --- Complete IFC 4x3 Schema Dictionary ---
-        // Generated from the authoritative buildingSMART IFC4X3 EXPRESS schema
-        // (via IfcOpenShell) on 2026-08-20. Covers every non-abstract subtype of
-        // IfcElement -- i.e. every physical building, MEP/services, and
-        // civil/infrastructure element that can carry geometry in a model.
-        // typeIdx/types are null for the handful of classes that have no
-        // PredefinedType attribute at all (e.g. IFCKERB's 9th argument is the
-        // boolean "Mountable", not an enum -- do not write a string there).
-        const IFC4X3_SCHEMA = {
+        // --- Multi-Schema Dictionary ---
+        // Generated from the authoritative buildingSMART EXPRESS schemas
+        // (via IfcOpenShell). Covers every non-abstract subtype of IfcElement
+        // for each of the three schema versions in real-world use. Attribute
+        // counts and PredefinedType availability genuinely differ between
+        // versions -- e.g. most IFC2X3 classes have NO PredefinedType
+        // attribute at all (it was only added in IFC4), so this is not just
+        // a smaller vocabulary, it's a different constructor signature.
+        const SCHEMA_TABLES = {
+            IFC2X3: {
+            "IFCBEAM": { attrs: 8, typeIdx: null, types: null },
+            "IFCBUILDINGELEMENTPART": { attrs: 8, typeIdx: null, types: null },
+            "IFCBUILDINGELEMENTPROXY": { attrs: 9, typeIdx: null, types: null },
+            "IFCCHAMFEREDGEFEATURE": { attrs: 11, typeIdx: null, types: null },
+            "IFCCOLUMN": { attrs: 8, typeIdx: null, types: null },
+            "IFCCOVERING": { attrs: 9, typeIdx: 8, types: ["CEILING", "FLOORING", "CLADDING", "ROOFING", "INSULATION", "MEMBRANE", "SLEEVING", "WRAPPING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCURTAINWALL": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISCRETEACCESSORY": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONCHAMBERELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONCONTROLELEMENT": { attrs: 9, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONFLOWELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDOOR": { attrs: 10, typeIdx: null, types: null },
+            "IFCELECTRICALELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCELECTRICDISTRIBUTIONPOINT": { attrs: 10, typeIdx: null, types: null },
+            "IFCELEMENTASSEMBLY": { attrs: 10, typeIdx: 9, types: ["ACCESSORY_ASSEMBLY", "ARCH", "BEAM_GRID", "BRACED_FRAME", "GIRDER", "REINFORCEMENT_UNIT", "RIGID_FRAME", "SLAB_FIELD", "TRUSS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCENERGYCONVERSIONDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCEQUIPMENTELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFASTENER": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWCONTROLLER": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWFITTING": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWMOVINGDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSEGMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSTORAGEDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTERMINAL": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTREATMENTDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFOOTING": { attrs: 9, typeIdx: 8, types: ["FOOTING_BEAM", "PAD_FOOTING", "PILE_CAP", "STRIP_FOOTING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFURNISHINGELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCMECHANICALFASTENER": { attrs: 10, typeIdx: null, types: null },
+            "IFCMEMBER": { attrs: 8, typeIdx: null, types: null },
+            "IFCOPENINGELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCPILE": { attrs: 10, typeIdx: 8, types: ["COHESION", "FRICTION", "SUPPORT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPLATE": { attrs: 8, typeIdx: null, types: null },
+            "IFCPROJECTIONELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCRAILING": { attrs: 9, typeIdx: 8, types: ["HANDRAIL", "GUARDRAIL", "BALUSTRADE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAMP": { attrs: 9, typeIdx: null, types: null },
+            "IFCRAMPFLIGHT": { attrs: 8, typeIdx: null, types: null },
+            "IFCREINFORCINGBAR": { attrs: 14, typeIdx: null, types: null },
+            "IFCREINFORCINGMESH": { attrs: 17, typeIdx: null, types: null },
+            "IFCROOF": { attrs: 9, typeIdx: null, types: null },
+            "IFCROUNDEDEDGEFEATURE": { attrs: 10, typeIdx: null, types: null },
+            "IFCSLAB": { attrs: 9, typeIdx: 8, types: ["FLOOR", "ROOF", "LANDING", "BASESLAB", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTAIR": { attrs: 9, typeIdx: null, types: null },
+            "IFCSTAIRFLIGHT": { attrs: 12, typeIdx: null, types: null },
+            "IFCTENDON": { attrs: 17, typeIdx: 9, types: ["STRAND", "WIRE", "BAR", "COATED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDONANCHOR": { attrs: 9, typeIdx: null, types: null },
+            "IFCTRANSPORTELEMENT": { attrs: 11, typeIdx: null, types: null },
+            "IFCVIRTUALELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCWALL": { attrs: 8, typeIdx: null, types: null },
+            "IFCWALLSTANDARDCASE": { attrs: 8, typeIdx: null, types: null },
+            "IFCWINDOW": { attrs: 10, typeIdx: null, types: null }
+            },
+            IFC4: {
+            "IFCACTUATOR": { attrs: 9, typeIdx: 8, types: ["ELECTRICACTUATOR", "HANDOPERATEDACTUATOR", "HYDRAULICACTUATOR", "PNEUMATICACTUATOR", "THERMOSTATICACTUATOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTERMINAL": { attrs: 9, typeIdx: 8, types: ["DIFFUSER", "GRILLE", "LOUVRE", "REGISTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTERMINALBOX": { attrs: 9, typeIdx: 8, types: ["CONSTANTFLOW", "VARIABLEFLOWPRESSUREDEPENDANT", "VARIABLEFLOWPRESSUREINDEPENDANT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAIRTOAIRHEATRECOVERY": { attrs: 9, typeIdx: 8, types: ["FIXEDPLATECOUNTERFLOWEXCHANGER", "FIXEDPLATECROSSFLOWEXCHANGER", "FIXEDPLATEPARALLELFLOWEXCHANGER", "ROTARYWHEEL", "RUNAROUNDCOILLOOP", "HEATPIPE", "TWINTOWERENTHALPYRECOVERYLOOPS", "THERMOSIPHONSEALEDTUBEHEATEXCHANGERS", "THERMOSIPHONCOILTYPEHEATEXCHANGERS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCALARM": { attrs: 9, typeIdx: 8, types: ["BELL", "BREAKGLASSBUTTON", "LIGHT", "MANUALPULLBOX", "SIREN", "WHISTLE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCAUDIOVISUALAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["AMPLIFIER", "CAMERA", "DISPLAY", "MICROPHONE", "PLAYER", "PROJECTOR", "RECEIVER", "SPEAKER", "SWITCHER", "TELEPHONE", "TUNER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBEAM": { attrs: 9, typeIdx: 8, types: ["BEAM", "JOIST", "HOLLOWCORE", "LINTEL", "SPANDREL", "T_BEAM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBEAMSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["BEAM", "JOIST", "HOLLOWCORE", "LINTEL", "SPANDREL", "T_BEAM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBOILER": { attrs: 9, typeIdx: 8, types: ["WATER", "STEAM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBUILDINGELEMENTPART": { attrs: 9, typeIdx: 8, types: ["INSULATION", "PRECASTPANEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBUILDINGELEMENTPROXY": { attrs: 9, typeIdx: 8, types: ["COMPLEX", "ELEMENT", "PARTIAL", "PROVISIONFORVOID", "PROVISIONFORSPACE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCBURNER": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLECARRIERFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CROSS", "REDUCER", "TEE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLECARRIERSEGMENT": { attrs: 9, typeIdx: 8, types: ["CABLELADDERSEGMENT", "CABLETRAYSEGMENT", "CABLETRUNKINGSEGMENT", "CONDUITSEGMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLEFITTING": { attrs: 9, typeIdx: 8, types: ["CONNECTOR", "ENTRY", "EXIT", "JUNCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCABLESEGMENT": { attrs: 9, typeIdx: 8, types: ["BUSBARSEGMENT", "CABLESEGMENT", "CONDUCTORSEGMENT", "CORESEGMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCHILLER": { attrs: 9, typeIdx: 8, types: ["AIRCOOLED", "WATERCOOLED", "HEATRECOVERY", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCHIMNEY": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCCIVILELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCCOIL": { attrs: 9, typeIdx: 8, types: ["DXCOOLINGCOIL", "ELECTRICHEATINGCOIL", "GASHEATINGCOIL", "HYDRONICCOIL", "STEAMHEATINGCOIL", "WATERCOOLINGCOIL", "WATERHEATINGCOIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOLUMN": { attrs: 9, typeIdx: 8, types: ["COLUMN", "PILASTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOLUMNSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["COLUMN", "PILASTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOMMUNICATIONSAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["ANTENNA", "COMPUTER", "FAX", "GATEWAY", "MODEM", "NETWORKAPPLIANCE", "NETWORKBRIDGE", "NETWORKHUB", "PRINTER", "REPEATER", "ROUTER", "SCANNER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOMPRESSOR": { attrs: 9, typeIdx: 8, types: ["DYNAMIC", "RECIPROCATING", "ROTARY", "SCROLL", "TROCHOIDAL", "SINGLESTAGE", "BOOSTER", "OPENTYPE", "HERMETIC", "SEMIHERMETIC", "WELDEDSHELLHERMETIC", "ROLLINGPISTON", "ROTARYVANE", "SINGLESCREW", "TWINSCREW", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCONDENSER": { attrs: 9, typeIdx: 8, types: ["AIRCOOLED", "EVAPORATIVECOOLED", "WATERCOOLED", "WATERCOOLEDBRAZEDPLATE", "WATERCOOLEDSHELLCOIL", "WATERCOOLEDSHELLTUBE", "WATERCOOLEDTUBEINTUBE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCONTROLLER": { attrs: 9, typeIdx: 8, types: ["FLOATING", "PROGRAMMABLE", "PROPORTIONAL", "MULTIPOSITION", "TWOPOSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOOLEDBEAM": { attrs: 9, typeIdx: 8, types: ["ACTIVE", "PASSIVE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOOLINGTOWER": { attrs: 9, typeIdx: 8, types: ["NATURALDRAFT", "MECHANICALINDUCEDDRAFT", "MECHANICALFORCEDDRAFT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCOVERING": { attrs: 9, typeIdx: 8, types: ["CEILING", "FLOORING", "CLADDING", "ROOFING", "MOLDING", "SKIRTINGBOARD", "INSULATION", "MEMBRANE", "SLEEVING", "WRAPPING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCCURTAINWALL": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCDAMPER": { attrs: 9, typeIdx: 8, types: ["BACKDRAFTDAMPER", "BALANCINGDAMPER", "BLASTDAMPER", "CONTROLDAMPER", "FIREDAMPER", "FIRESMOKEDAMPER", "FUMEHOODEXHAUST", "GRAVITYDAMPER", "GRAVITYRELIEFDAMPER", "RELIEFDAMPER", "SMOKEDAMPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISCRETEACCESSORY": { attrs: 9, typeIdx: 8, types: ["ANCHORPLATE", "BRACKET", "SHOE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISTRIBUTIONCHAMBERELEMENT": { attrs: 9, typeIdx: 8, types: ["FORMEDDUCT", "INSPECTIONCHAMBER", "INSPECTIONPIT", "MANHOLE", "METERCHAMBER", "SUMP", "TRENCH", "VALVECHAMBER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDISTRIBUTIONCONTROLELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDISTRIBUTIONFLOWELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCDOOR": { attrs: 13, typeIdx: 10, types: ["DOOR", "GATE", "TRAPDOOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDOORSTANDARDCASE": { attrs: 13, typeIdx: 10, types: ["DOOR", "GATE", "TRAPDOOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CONNECTOR", "ENTRY", "EXIT", "JUNCTION", "OBSTRUCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTSEGMENT": { attrs: 9, typeIdx: 8, types: ["RIGIDSEGMENT", "FLEXIBLESEGMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCDUCTSILENCER": { attrs: 9, typeIdx: 8, types: ["FLATOVAL", "RECTANGULAR", "ROUND", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICAPPLIANCE": { attrs: 9, typeIdx: 8, types: ["DISHWASHER", "ELECTRICCOOKER", "FREESTANDINGELECTRICHEATER", "FREESTANDINGFAN", "FREESTANDINGWATERHEATER", "FREESTANDINGWATERCOOLER", "FREEZER", "FRIDGE_FREEZER", "HANDDRYER", "KITCHENMACHINE", "MICROWAVE", "PHOTOCOPIER", "REFRIGERATOR", "TUMBLEDRYER", "VENDINGMACHINE", "WASHINGMACHINE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICDISTRIBUTIONBOARD": { attrs: 9, typeIdx: 8, types: ["CONSUMERUNIT", "DISTRIBUTIONBOARD", "MOTORCONTROLCENTRE", "SWITCHBOARD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICFLOWSTORAGEDEVICE": { attrs: 9, typeIdx: 8, types: ["BATTERY", "CAPACITORBANK", "HARMONICFILTER", "INDUCTORBANK", "UPS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICGENERATOR": { attrs: 9, typeIdx: 8, types: ["CHP", "ENGINEGENERATOR", "STANDALONE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICMOTOR": { attrs: 9, typeIdx: 8, types: ["DC", "INDUCTION", "POLYPHASE", "RELUCTANCESYNCHRONOUS", "SYNCHRONOUS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELECTRICTIMECONTROL": { attrs: 9, typeIdx: 8, types: ["TIMECLOCK", "TIMEDELAY", "RELAY", "USERDEFINED", "NOTDEFINED"] },
+            "IFCELEMENTASSEMBLY": { attrs: 10, typeIdx: 9, types: ["ACCESSORY_ASSEMBLY", "ARCH", "BEAM_GRID", "BRACED_FRAME", "GIRDER", "REINFORCEMENT_UNIT", "RIGID_FRAME", "SLAB_FIELD", "TRUSS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCENERGYCONVERSIONDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCENGINE": { attrs: 9, typeIdx: 8, types: ["EXTERNALCOMBUSTION", "INTERNALCOMBUSTION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEVAPORATIVECOOLER": { attrs: 9, typeIdx: 8, types: ["DIRECTEVAPORATIVERANDOMMEDIAAIRCOOLER", "DIRECTEVAPORATIVERIGIDMEDIAAIRCOOLER", "DIRECTEVAPORATIVESLINGERSPACKAGEDAIRCOOLER", "DIRECTEVAPORATIVEPACKAGEDROTARYAIRCOOLER", "DIRECTEVAPORATIVEAIRWASHER", "INDIRECTEVAPORATIVEPACKAGEAIRCOOLER", "INDIRECTEVAPORATIVEWETCOIL", "INDIRECTEVAPORATIVECOOLINGTOWERORCOILCOOLER", "INDIRECTDIRECTCOMBINATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCEVAPORATOR": { attrs: 9, typeIdx: 8, types: ["DIRECTEXPANSION", "DIRECTEXPANSIONSHELLANDTUBE", "DIRECTEXPANSIONTUBEINTUBE", "DIRECTEXPANSIONBRAZEDPLATE", "FLOODEDSHELLANDTUBE", "SHELLANDCOIL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFAN": { attrs: 9, typeIdx: 8, types: ["CENTRIFUGALFORWARDCURVED", "CENTRIFUGALRADIAL", "CENTRIFUGALBACKWARDINCLINEDCURVED", "CENTRIFUGALAIRFOIL", "TUBEAXIAL", "VANEAXIAL", "PROPELLORAXIAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFASTENER": { attrs: 9, typeIdx: 8, types: ["GLUE", "MORTAR", "WELD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFILTER": { attrs: 9, typeIdx: 8, types: ["AIRPARTICLEFILTER", "COMPRESSEDAIRFILTER", "ODORFILTER", "OILFILTER", "STRAINER", "WATERFILTER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFIRESUPPRESSIONTERMINAL": { attrs: 9, typeIdx: 8, types: ["BREECHINGINLET", "FIREHYDRANT", "HOSEREEL", "SPRINKLER", "SPRINKLERDEFLECTOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWCONTROLLER": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWFITTING": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWINSTRUMENT": { attrs: 9, typeIdx: 8, types: ["PRESSUREGAUGE", "THERMOMETER", "AMMETER", "FREQUENCYMETER", "POWERFACTORMETER", "PHASEANGLEMETER", "VOLTMETER_PEAK", "VOLTMETER_RMS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWMETER": { attrs: 9, typeIdx: 8, types: ["ENERGYMETER", "GASMETER", "OILMETER", "WATERMETER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFLOWMOVINGDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSEGMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWSTORAGEDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTERMINAL": { attrs: 8, typeIdx: null, types: null },
+            "IFCFLOWTREATMENTDEVICE": { attrs: 8, typeIdx: null, types: null },
+            "IFCFOOTING": { attrs: 9, typeIdx: 8, types: ["CAISSON_FOUNDATION", "FOOTING_BEAM", "PAD_FOOTING", "PILE_CAP", "STRIP_FOOTING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCFURNISHINGELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCFURNITURE": { attrs: 9, typeIdx: 8, types: ["CHAIR", "TABLE", "DESK", "BED", "FILECABINET", "SHELF", "SOFA", "USERDEFINED", "NOTDEFINED"] },
+            "IFCGEOGRAPHICELEMENT": { attrs: 9, typeIdx: 8, types: ["TERRAIN", "USERDEFINED", "NOTDEFINED"] },
+            "IFCHEATEXCHANGER": { attrs: 9, typeIdx: 8, types: ["PLATE", "SHELLANDTUBE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCHUMIDIFIER": { attrs: 9, typeIdx: 8, types: ["STEAMINJECTION", "ADIABATICAIRWASHER", "ADIABATICPAN", "ADIABATICWETTEDELEMENT", "ADIABATICATOMIZING", "ADIABATICULTRASONIC", "ADIABATICRIGIDMEDIA", "ADIABATICCOMPRESSEDAIRNOZZLE", "ASSISTEDELECTRIC", "ASSISTEDNATURALGAS", "ASSISTEDPROPANE", "ASSISTEDBUTANE", "ASSISTEDSTEAM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCINTERCEPTOR": { attrs: 9, typeIdx: 8, types: ["CYCLONIC", "GREASE", "OIL", "PETROL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCJUNCTIONBOX": { attrs: 9, typeIdx: 8, types: ["DATA", "POWER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCLAMP": { attrs: 9, typeIdx: 8, types: ["COMPACTFLUORESCENT", "FLUORESCENT", "HALOGEN", "HIGHPRESSUREMERCURY", "HIGHPRESSURESODIUM", "LED", "METALHALIDE", "OLED", "TUNGSTENFILAMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCLIGHTFIXTURE": { attrs: 9, typeIdx: 8, types: ["POINTSOURCE", "DIRECTIONSOURCE", "SECURITYLIGHTING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMECHANICALFASTENER": { attrs: 11, typeIdx: 10, types: ["ANCHORBOLT", "BOLT", "DOWEL", "NAIL", "NAILPLATE", "RIVET", "SCREW", "SHEARCONNECTOR", "STAPLE", "STUDSHEARCONNECTOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMEDICALDEVICE": { attrs: 9, typeIdx: 8, types: ["AIRSTATION", "FEEDAIRUNIT", "OXYGENGENERATOR", "OXYGENPLANT", "VACUUMSTATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMEMBER": { attrs: 9, typeIdx: 8, types: ["BRACE", "CHORD", "COLLAR", "MEMBER", "MULLION", "PLATE", "POST", "PURLIN", "RAFTER", "STRINGER", "STRUT", "STUD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMEMBERSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["BRACE", "CHORD", "COLLAR", "MEMBER", "MULLION", "PLATE", "POST", "PURLIN", "RAFTER", "STRINGER", "STRUT", "STUD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCMOTORCONNECTION": { attrs: 9, typeIdx: 8, types: ["BELTDRIVE", "COUPLING", "DIRECTDRIVE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCOPENINGELEMENT": { attrs: 9, typeIdx: 8, types: ["OPENING", "RECESS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCOPENINGSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["OPENING", "RECESS", "USERDEFINED", "NOTDEFINED"] },
+            "IFCOUTLET": { attrs: 9, typeIdx: 8, types: ["AUDIOVISUALOUTLET", "COMMUNICATIONSOUTLET", "POWEROUTLET", "DATAOUTLET", "TELEPHONEOUTLET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPILE": { attrs: 10, typeIdx: 8, types: ["BORED", "DRIVEN", "JETGROUTING", "COHESION", "FRICTION", "SUPPORT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPIPEFITTING": { attrs: 9, typeIdx: 8, types: ["BEND", "CONNECTOR", "ENTRY", "EXIT", "JUNCTION", "OBSTRUCTION", "TRANSITION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPIPESEGMENT": { attrs: 9, typeIdx: 8, types: ["CULVERT", "FLEXIBLESEGMENT", "RIGIDSEGMENT", "GUTTER", "SPOOL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPLATE": { attrs: 9, typeIdx: 8, types: ["CURTAIN_PANEL", "SHEET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPLATESTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["CURTAIN_PANEL", "SHEET", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPROJECTIONELEMENT": { attrs: 9, typeIdx: 8, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCPROTECTIVEDEVICE": { attrs: 9, typeIdx: 8, types: ["CIRCUITBREAKER", "EARTHLEAKAGECIRCUITBREAKER", "EARTHINGSWITCH", "FUSEDISCONNECTOR", "RESIDUALCURRENTCIRCUITBREAKER", "RESIDUALCURRENTSWITCH", "VARISTOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPROTECTIVEDEVICETRIPPINGUNIT": { attrs: 9, typeIdx: 8, types: ["ELECTRONIC", "ELECTROMAGNETIC", "RESIDUALCURRENT", "THERMAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCPUMP": { attrs: 9, typeIdx: 8, types: ["CIRCULATOR", "ENDSUCTION", "SPLITCASE", "SUBMERSIBLEPUMP", "SUMPPUMP", "VERTICALINLINE", "VERTICALTURBINE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAILING": { attrs: 9, typeIdx: 8, types: ["HANDRAIL", "GUARDRAIL", "BALUSTRADE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAMP": { attrs: 9, typeIdx: 8, types: ["STRAIGHT_RUN_RAMP", "TWO_STRAIGHT_RUN_RAMP", "QUARTER_TURN_RAMP", "TWO_QUARTER_TURN_RAMP", "HALF_TURN_RAMP", "SPIRAL_RAMP", "USERDEFINED", "NOTDEFINED"] },
+            "IFCRAMPFLIGHT": { attrs: 9, typeIdx: 8, types: ["STRAIGHT", "SPIRAL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCREINFORCINGBAR": { attrs: 14, typeIdx: 12, types: ["ANCHORING", "EDGE", "LIGATURE", "MAIN", "PUNCHING", "RING", "SHEAR", "STUD", "USERDEFINED", "NOTDEFINED"] },
+            "IFCREINFORCINGMESH": { attrs: 18, typeIdx: 17, types: ["USERDEFINED", "NOTDEFINED"] },
+            "IFCROOF": { attrs: 9, typeIdx: 8, types: ["FLAT_ROOF", "SHED_ROOF", "GABLE_ROOF", "HIP_ROOF", "HIPPED_GABLE_ROOF", "GAMBREL_ROOF", "MANSARD_ROOF", "BARREL_ROOF", "RAINBOW_ROOF", "BUTTERFLY_ROOF", "PAVILION_ROOF", "DOME_ROOF", "FREEFORM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSANITARYTERMINAL": { attrs: 9, typeIdx: 8, types: ["BATH", "BIDET", "CISTERN", "SHOWER", "SINK", "SANITARYFOUNTAIN", "TOILETPAN", "URINAL", "WASHHANDBASIN", "WCSEAT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSENSOR": { attrs: 9, typeIdx: 8, types: ["COSENSOR", "CO2SENSOR", "CONDUCTANCESENSOR", "CONTACTSENSOR", "FIRESENSOR", "FLOWSENSOR", "FROSTSENSOR", "GASSENSOR", "HEATSENSOR", "HUMIDITYSENSOR", "IDENTIFIERSENSOR", "IONCONCENTRATIONSENSOR", "LEVELSENSOR", "LIGHTSENSOR", "MOISTURESENSOR", "MOVEMENTSENSOR", "PHSENSOR", "PRESSURESENSOR", "RADIATIONSENSOR", "RADIOACTIVITYSENSOR", "SMOKESENSOR", "SOUNDSENSOR", "TEMPERATURESENSOR", "WINDSENSOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSHADINGDEVICE": { attrs: 9, typeIdx: 8, types: ["JALOUSIE", "SHUTTER", "AWNING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSLAB": { attrs: 9, typeIdx: 8, types: ["FLOOR", "ROOF", "LANDING", "BASESLAB", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSLABELEMENTEDCASE": { attrs: 9, typeIdx: 8, types: ["FLOOR", "ROOF", "LANDING", "BASESLAB", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSLABSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["FLOOR", "ROOF", "LANDING", "BASESLAB", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSOLARDEVICE": { attrs: 9, typeIdx: 8, types: ["SOLARCOLLECTOR", "SOLARPANEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSPACEHEATER": { attrs: 9, typeIdx: 8, types: ["CONVECTOR", "RADIATOR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTACKTERMINAL": { attrs: 9, typeIdx: 8, types: ["BIRDCAGE", "COWL", "RAINWATERHOPPER", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTAIR": { attrs: 9, typeIdx: 8, types: ["STRAIGHT_RUN_STAIR", "TWO_STRAIGHT_RUN_STAIR", "QUARTER_WINDING_STAIR", "QUARTER_TURN_STAIR", "HALF_WINDING_STAIR", "HALF_TURN_STAIR", "TWO_QUARTER_WINDING_STAIR", "TWO_QUARTER_TURN_STAIR", "THREE_QUARTER_WINDING_STAIR", "THREE_QUARTER_TURN_STAIR", "SPIRAL_STAIR", "DOUBLE_RETURN_STAIR", "CURVED_RUN_STAIR", "TWO_CURVED_RUN_STAIR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSTAIRFLIGHT": { attrs: 13, typeIdx: 12, types: ["STRAIGHT", "WINDER", "SPIRAL", "CURVED", "FREEFORM", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSURFACEFEATURE": { attrs: 9, typeIdx: 8, types: ["MARK", "TAG", "TREATMENT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSWITCHINGDEVICE": { attrs: 9, typeIdx: 8, types: ["CONTACTOR", "DIMMERSWITCH", "EMERGENCYSTOP", "KEYPAD", "MOMENTARYSWITCH", "SELECTORSWITCH", "STARTER", "SWITCHDISCONNECTOR", "TOGGLESWITCH", "USERDEFINED", "NOTDEFINED"] },
+            "IFCSYSTEMFURNITUREELEMENT": { attrs: 9, typeIdx: 8, types: ["PANEL", "WORKSURFACE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTANK": { attrs: 9, typeIdx: 8, types: ["BASIN", "BREAKPRESSURE", "EXPANSION", "FEEDANDEXPANSION", "PRESSUREVESSEL", "STORAGE", "VESSEL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDON": { attrs: 17, typeIdx: 9, types: ["BAR", "COATED", "STRAND", "WIRE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTENDONANCHOR": { attrs: 10, typeIdx: 9, types: ["COUPLER", "FIXED_END", "TENSIONING_END", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTRANSFORMER": { attrs: 9, typeIdx: 8, types: ["CURRENT", "FREQUENCY", "INVERTER", "RECTIFIER", "VOLTAGE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTRANSPORTELEMENT": { attrs: 9, typeIdx: 8, types: ["ELEVATOR", "ESCALATOR", "MOVINGWALKWAY", "CRANEWAY", "LIFTINGGEAR", "USERDEFINED", "NOTDEFINED"] },
+            "IFCTUBEBUNDLE": { attrs: 9, typeIdx: 8, types: ["FINNED", "USERDEFINED", "NOTDEFINED"] },
+            "IFCUNITARYCONTROLELEMENT": { attrs: 9, typeIdx: 8, types: ["ALARMPANEL", "CONTROLPANEL", "GASDETECTIONPANEL", "INDICATORPANEL", "MIMICPANEL", "HUMIDISTAT", "THERMOSTAT", "WEATHERSTATION", "USERDEFINED", "NOTDEFINED"] },
+            "IFCUNITARYEQUIPMENT": { attrs: 9, typeIdx: 8, types: ["AIRHANDLER", "AIRCONDITIONINGUNIT", "DEHUMIDIFIER", "SPLITSYSTEM", "ROOFTOPUNIT", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVALVE": { attrs: 9, typeIdx: 8, types: ["AIRRELEASE", "ANTIVACUUM", "CHANGEOVER", "CHECK", "COMMISSIONING", "DIVERTING", "DRAWOFFCOCK", "DOUBLECHECK", "DOUBLEREGULATING", "FAUCET", "FLUSHING", "GASCOCK", "GASTAP", "ISOLATING", "MIXING", "PRESSUREREDUCING", "PRESSURERELIEF", "REGULATING", "SAFETYCUTOFF", "STEAMTRAP", "STOPCOCK", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVIBRATIONISOLATOR": { attrs: 9, typeIdx: 8, types: ["COMPRESSION", "SPRING", "USERDEFINED", "NOTDEFINED"] },
+            "IFCVIRTUALELEMENT": { attrs: 8, typeIdx: null, types: null },
+            "IFCVOIDINGFEATURE": { attrs: 9, typeIdx: 8, types: ["CUTOUT", "NOTCH", "HOLE", "MITER", "CHAMFER", "EDGE", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWALL": { attrs: 9, typeIdx: 8, types: ["MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "POLYGONAL", "ELEMENTEDWALL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWALLELEMENTEDCASE": { attrs: 9, typeIdx: 8, types: ["MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "POLYGONAL", "ELEMENTEDWALL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWALLSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "POLYGONAL", "ELEMENTEDWALL", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWASTETERMINAL": { attrs: 9, typeIdx: 8, types: ["FLOORTRAP", "FLOORWASTE", "GULLYSUMP", "GULLYTRAP", "ROOFDRAIN", "WASTEDISPOSALUNIT", "WASTETRAP", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWINDOW": { attrs: 13, typeIdx: 10, types: ["WINDOW", "SKYLIGHT", "LIGHTDOME", "USERDEFINED", "NOTDEFINED"] },
+            "IFCWINDOWSTANDARDCASE": { attrs: 13, typeIdx: 10, types: ["WINDOW", "SKYLIGHT", "LIGHTDOME", "USERDEFINED", "NOTDEFINED"] }
+            },
+            IFC4X3: {
             "IFCACTUATOR": { attrs: 9, typeIdx: 8, types: ["ELECTRICACTUATOR", "HANDOPERATEDACTUATOR", "HYDRAULICACTUATOR", "PNEUMATICACTUATOR", "THERMOSTATICACTUATOR", "USERDEFINED", "NOTDEFINED"] },
             "IFCAIRTERMINAL": { attrs: 9, typeIdx: 8, types: ["DIFFUSER", "GRILLE", "LOUVRE", "REGISTER", "USERDEFINED", "NOTDEFINED"] },
             "IFCAIRTERMINALBOX": { attrs: 9, typeIdx: 8, types: ["CONSTANTFLOW", "VARIABLEFLOWPRESSUREDEPENDANT", "VARIABLEFLOWPRESSUREINDEPENDANT", "USERDEFINED", "NOTDEFINED"] },
@@ -775,7 +984,15 @@
             "IFCWALLSTANDARDCASE": { attrs: 9, typeIdx: 8, types: ["ELEMENTEDWALL", "MOVABLE", "PARAPET", "PARTITIONING", "PLUMBINGWALL", "POLYGONAL", "RETAININGWALL", "SHEAR", "SOLIDWALL", "STANDARD", "WAVEWALL", "USERDEFINED", "NOTDEFINED"] },
             "IFCWASTETERMINAL": { attrs: 9, typeIdx: 8, types: ["FLOORTRAP", "FLOORWASTE", "GULLYSUMP", "GULLYTRAP", "ROOFDRAIN", "WASTEDISPOSALUNIT", "WASTETRAP", "USERDEFINED", "NOTDEFINED"] },
             "IFCWINDOW": { attrs: 13, typeIdx: 10, types: ["LIGHTDOME", "SKYLIGHT", "WINDOW", "USERDEFINED", "NOTDEFINED"] }
+            }
         };
+
+        // The schema table currently in force -- set from the loaded file's own
+        // FILE_SCHEMA header (see detectFileSchema), not assumed. Defaults to
+        // IFC4X3 (the superset) only until a file is actually loaded.
+        let ACTIVE_SCHEMA_NAME = 'IFC4X3';
+        let IFC4X3_SCHEMA = SCHEMA_TABLES.IFC4X3; // kept as the active-table alias; name retained for minimal downstream churn
+
 
 
         // --- Shunting-Yard Boolean Query Processing Engine ---
@@ -944,8 +1161,11 @@
         // --- Search-as-you-type index: class names AND their PredefinedType enum values ---
         // Lets the user find a class by remembering the Type instead (e.g. typing
         // "stud" surfaces IFCMEMBER because STUD is one of its PredefinedType values).
+        // Rebuilt whenever the active schema changes (see setActiveSchema), since a
+        // class or type available in IFC4X3 may not exist in IFC2X3/IFC4 at all.
         const classSuggestionsEl = document.getElementById('classSuggestions');
-        const CLASS_SEARCH_INDEX = (() => {
+        let CLASS_SEARCH_INDEX = [];
+        function buildClassSearchIndex() {
             const index = [];
             Object.keys(IFC4X3_SCHEMA).sort().forEach(cls => {
                 index.push({ cls, matchText: cls, via: null });
@@ -957,8 +1177,52 @@
                     });
                 }
             });
-            return index;
-        })();
+            CLASS_SEARCH_INDEX = index;
+        }
+        buildClassSearchIndex();
+
+        // Recognises the schema a loaded file actually declares (its FILE_SCHEMA
+        // header line) rather than assuming -- e.g. FILE_SCHEMA(('IFC2X3'));
+        // Real files sometimes carry addendum/candidate suffixes on the name
+        // (IFC4X3_ADD2, IFC2X3_TC1, etc.), so this matches by prefix rather than
+        // requiring an exact string.
+        function detectFileSchema(lines) {
+            for (let i = 0; i < Math.min(lines.length, 60); i++) {
+                const line = lines[i];
+                if (!line || line.indexOf('FILE_SCHEMA') === -1) continue;
+                const m = line.match(/'([A-Za-z0-9_]+)'/);
+                if (!m) continue;
+                const raw = m[1].toUpperCase();
+                if (raw.startsWith('IFC4X3')) return 'IFC4X3';
+                if (raw.startsWith('IFC2X3')) return 'IFC2X3';
+                if (raw.startsWith('IFC4')) return 'IFC4'; // checked after IFC4X3 so it doesn't shadow it
+                return null; // header found but not a schema name we recognise
+            }
+            return null; // no FILE_SCHEMA header found at all
+        }
+
+        // Switches the whole app over to a different schema's class table --
+        // parsing, the target-class search, PredefinedType options, and the
+        // attribute-padding logic all key off IFC4X3_SCHEMA (kept as the generic
+        // "currently active table" name to avoid renaming everything downstream).
+        function setActiveSchema(name, detected) {
+            ACTIVE_SCHEMA_NAME = name;
+            IFC4X3_SCHEMA = SCHEMA_TABLES[name];
+            buildClassSearchIndex();
+
+            const badge = document.getElementById('schemaBadge');
+            if (badge) {
+                if (detected) {
+                    badge.textContent = `Schema: ${name}`;
+                    badge.className = 'schema-badge schema-badge-ok';
+                    badge.title = 'Detected from this file\u2019s FILE_SCHEMA header.';
+                } else {
+                    badge.textContent = `Schema: ${name} (unconfirmed)`;
+                    badge.className = 'schema-badge schema-badge-warn';
+                    badge.title = 'Could not read a FILE_SCHEMA header from this file -- defaulting to IFC4X3. Double-check before reclassifying if this isn\u2019t a 4X3 model.';
+                }
+            }
+        }
 
         function onTargetClassInput() {
             const query = targetClass.value.trim().toUpperCase();
@@ -1081,11 +1345,14 @@
 
                 const text = evt.target.result;
                 ifcLines = text.split(/\r?\n/);
-                
+
+                const detectedSchema = detectFileSchema(ifcLines);
+                setActiveSchema(detectedSchema || 'IFC4X3', !!detectedSchema);
+
                 // Trigger fully optimized asynchronous parsing engine
                 await parseAllIFCProductInstancesAsync();
                 
-                fileMeta.innerText = `Loaded ${file.name} successfully. Indexed ${parsedElements.length} elements.`;
+                fileMeta.innerText = `Loaded ${file.name} successfully. Indexed ${parsedElements.length} elements. Schema: ${ACTIVE_SCHEMA_NAME}${detectedSchema ? '' : ' (unconfirmed -- no FILE_SCHEMA header found)'}.`;
                 fileMeta.style.display = 'block';
                 uploadText.innerText = "File loaded. Drop a new file to replace.";
                 btnExport.disabled = false;
@@ -1220,8 +1487,27 @@
         function onClassSelectionChanged() {
             const selectedClass = targetClass.value.toUpperCase();
             const preTypeContainer = document.getElementById('preTypeContainer');
+            const crossWarning = document.getElementById('crossSchemaWarning');
 
             const schemaEntry = IFC4X3_SCHEMA[selectedClass];
+
+            // If the typed class doesn't exist in the file's own active schema, check
+            // whether it exists in one of the *other* two schemas -- that's exactly
+            // the scenario this feature exists to catch: reclassifying an IFC2X3 or
+            // IFC4 file into a class/vocabulary that schema doesn't actually have,
+            // while the file's header still claims to be that version.
+            if (selectedClass && !schemaEntry) {
+                const otherSchemas = Object.keys(SCHEMA_TABLES).filter(n => n !== ACTIVE_SCHEMA_NAME);
+                const foundIn = otherSchemas.filter(n => SCHEMA_TABLES[n].hasOwnProperty(selectedClass));
+                if (foundIn.length > 0) {
+                    crossWarning.style.display = 'block';
+                    crossWarning.innerHTML = `⚠ ${selectedClass} is not part of ${ACTIVE_SCHEMA_NAME} (this file's schema) — it only exists in ${foundIn.join(' / ')}. Reclassifying to it will produce a file that doesn't match its own declared schema.`;
+                } else {
+                    crossWarning.style.display = 'none';
+                }
+            } else {
+                crossWarning.style.display = 'none';
+            }
 
             // Clear User Defined Type / Rename Pattern / Description once the typed
             // text resolves to a genuinely new, recognised class — not on every
@@ -1425,7 +1711,14 @@
                     // Dynamic element parameter signature padding matching target schema requirements.
                     // Unrecognised (hand-typed) classes fall back to the generic IfcElement
                     // signature: 9 arguments, PredefinedType at index 8.
-                    const schemaDef = IFC4X3_SCHEMA[targetCls] || { attrs: 9, typeIdx: 8 };
+                    // Fallback for a hand-typed class not in the active table: IFC2X3
+                    // mostly lacks PredefinedType entirely (added in IFC4), so its
+                    // generic element signature is 8 args with no type slot; IFC4/4X3
+                    // add PredefinedType as a 9th argument.
+                    const genericFallback = ACTIVE_SCHEMA_NAME === 'IFC2X3'
+                        ? { attrs: 8, typeIdx: null }
+                        : { attrs: 9, typeIdx: 8 };
+                    const schemaDef = IFC4X3_SCHEMA[targetCls] || genericFallback;
                     const targetAttributeCount = schemaDef.attrs;
                     const typeIndex = schemaDef.typeIdx; // null for classes with no PredefinedType at all
 
