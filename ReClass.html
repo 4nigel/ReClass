@@ -494,6 +494,10 @@
             border-color: rgba(245, 158, 11, 0.4);
             background: rgba(245, 158, 11, 0.08);
         }
+        #targetClass.input-invalid {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 1px var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -527,6 +531,11 @@
                     <input type="text" id="targetClass" autocomplete="off" placeholder="Type to search e.g. IFCTRACK or STUD..." oninput="onTargetClassInput()" onfocus="this.select()">
                     <div id="classSuggestions" class="suggestion-dropdown"></div>
                     <div id="crossSchemaWarning" style="display:none; font-size: 11px; color: var(--warning); margin-top: 6px; line-height: 1.4;"></div>
+                    <div id="classValidationMsg" style="display:none; font-size: 11px; color: var(--danger); margin-top: 6px; line-height: 1.4;"></div>
+                    <label style="display:flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; color: var(--text-muted); font-weight: 400;">
+                        <input type="checkbox" id="allowUnrecognisedClass" style="width:auto;" onchange="onClassSelectionChanged()">
+                        Allow unrecognised class (advanced — writes a best-guess generic signature; only use this if you know what you're doing)
+                    </label>
                 </div>
 
                 <!-- Dynamic Predefined Type Select Dropdown -->
@@ -1117,6 +1126,7 @@
         let parsedElements = []; 
         let selectedElementIds = new Set();
         let originalFileBaseName = 'ReClassified_Model'; // fallback if no file loaded yet
+        let typeRelatedElementIds = new Set(); // populated by buildTypeRelationIndex() after each file load
         let activeTab = 'proxies'; 
         let initialProxyCount = 0;
 
@@ -1351,6 +1361,7 @@
 
                 // Trigger fully optimized asynchronous parsing engine
                 await parseAllIFCProductInstancesAsync();
+                buildTypeRelationIndex(); // so Apply-time warnings (fix #4) are an O(1) lookup, not a rescan per click
                 
                 fileMeta.innerText = `Loaded ${file.name} successfully. Indexed ${parsedElements.length} elements. Schema: ${ACTIVE_SCHEMA_NAME}${detectedSchema ? '' : ' (unconfirmed -- no FILE_SCHEMA header found)'}.`;
                 fileMeta.style.display = 'block';
@@ -1366,6 +1377,47 @@
             reader.readAsText(file);
         }
 
+        // Parses one raw STEP entity line into its structural parts -- shared by
+        // both the initial file parser and the pre-save validator (see exportIFC),
+        // so the two can never drift apart on what counts as valid
+        // "#ID= CLASS(args...);" syntax.
+        function parseEntityLine(line) {
+            if (!line || line[0] !== '#') return null;
+            const eqIdx = line.indexOf('=');
+            if (eqIdx === -1) return null;
+            const stepId = parseInt(line.substring(1, eqIdx).trim());
+            if (isNaN(stepId)) return null;
+            const parenIdx = line.indexOf('(', eqIdx);
+            if (parenIdx === -1) return null;
+            const className = line.substring(eqIdx + 1, parenIdx).trim().toUpperCase();
+            const lastParenIdx = line.lastIndexOf(')');
+            if (lastParenIdx === -1 || lastParenIdx < parenIdx) return null;
+            const argsString = line.substring(parenIdx + 1, lastParenIdx);
+            const args = splitStepArgs(argsString);
+            return { stepId, className, args, argsString };
+        }
+
+        // One-time scan (per file load) of which elements currently belong to an
+        // IFCRELDEFINESBYTYPE relationship -- used to warn before Apply silently
+        // strips that relationship (fix #4). Done once here rather than rescanning
+        // the whole file on every Apply click.
+        function buildTypeRelationIndex() {
+            typeRelatedElementIds = new Set();
+            for (let i = 0; i < ifcLines.length; i++) {
+                const line = ifcLines[i];
+                if (!line || line.indexOf('IFCRELDEFINESBYTYPE') === -1) continue;
+                const parsed = parseEntityLine(line);
+                if (!parsed || parsed.className !== 'IFCRELDEFINESBYTYPE') continue;
+                const relatedObjsStr = parsed.args[4];
+                if (relatedObjsStr && relatedObjsStr.startsWith('(') && relatedObjsStr.endsWith(')')) {
+                    relatedObjsStr.slice(1, -1).split(',').forEach(idStr => {
+                        const idNum = parseInt(idStr.trim().replace('#', ''));
+                        if (!isNaN(idNum)) typeRelatedElementIds.add(idNum);
+                    });
+                }
+            }
+        }
+
         // --- Optimized High-Speed Asynchronous Parser ---
         async function parseAllIFCProductInstancesAsync() {
             parsedElements = [];
@@ -1376,43 +1428,28 @@
 
             for (let i = 0; i < totalLines; i++) {
                 const line = ifcLines[i];
-                
-                // Fast-reject non-instance rows using character checks
+
+                // Fast-reject non-instance rows before the fuller parse
                 if (!line || line[0] !== '#') continue;
 
-                const eqIdx = line.indexOf('=');
-                if (eqIdx === -1) continue;
+                const parsed = parseEntityLine(line);
+                if (!parsed) continue;
 
-                const parenIdx = line.indexOf('(', eqIdx);
-                if (parenIdx === -1) continue;
-
-                // Instantly slice candidate class name without complex Regex
-                const className = line.substring(eqIdx + 1, parenIdx).trim().toUpperCase();
-
-                if (className === 'IFCBUILDINGELEMENTPROXY' || IFC4X3_SCHEMA.hasOwnProperty(className)) {
-                    const stepId = parseInt(line.substring(1, eqIdx).trim());
-                    if (isNaN(stepId)) continue;
-
-                    const lastParenIdx = line.lastIndexOf(')');
-                    if (lastParenIdx === -1 || lastParenIdx < parenIdx) continue;
-
-                    const argsString = line.substring(parenIdx + 1, lastParenIdx);
-                    const parsedArgs = splitStepArgs(argsString);
-                    
+                if (parsed.className === 'IFCBUILDINGELEMENTPROXY' || IFC4X3_SCHEMA.hasOwnProperty(parsed.className)) {
                     // Fixed index-2 lookup to correctly grab the 'Name' string attribute
-                    const rawName = parsedArgs[2] || '';
+                    const rawName = parsed.args[2] || '';
                     const nameValue = stripQuotes(rawName);
 
                     parsedElements.push({
-                        id: stepId,
-                        originalClass: className,
-                        currentClass: className,
+                        id: parsed.stepId,
+                        originalClass: parsed.className,
+                        currentClass: parsed.className,
                         originalName: nameValue,
                         currentName: nameValue,
-                        args: parsedArgs,
+                        args: parsed.args,
                         lineIndex: i,
                         isModified: false,
-                        originalArgs: [...parsedArgs]
+                        originalArgs: [...parsed.args]
                     });
                 }
 
@@ -1434,6 +1471,16 @@
             for (let i = 0; i < argString.length; i++) {
                 let char = argString[i];
                 if (char === "'") {
+                    // A doubled '' while already inside a string literal is an escaped
+                    // apostrophe, not "close quote, reopen quote" -- consume both
+                    // characters as one and stay in the same quote state. Getting this
+                    // wrong throws off comma-splitting for the rest of the line, since
+                    // a naive toggle would think the string ended early.
+                    if (inQuote && argString[i + 1] === "'") {
+                        current += "'";
+                        i++; // consume the second character of the escaped pair too
+                        continue;
+                    }
                     inQuote = !inQuote;
                     current += char;
                 } else if (char === "(" && !inQuote) {
@@ -1453,9 +1500,26 @@
             return args;
         }
 
+        // STEP requires an embedded apostrophe inside a string literal to be
+        // doubled ('' not '), otherwise the literal terminates early and the rest
+        // of the line misparses. Route every string written into elem.args (Name,
+        // Description, ObjectType/UserDefinedType) through this -- never hand-roll
+        // `'${value}'` anywhere downstream of this function.
+        function stepEncodeString(str) {
+            if (str === null || str === undefined || str === '') return '$';
+            const escaped = String(str).replace(/'/g, "''");
+            return `'${escaped}'`;
+        }
+
+        // Reverses stepEncodeString: strips the outer quotes and un-doubles any
+        // escaped apostrophes back to single ones. This has to be the symmetric
+        // opposite of the encoder -- if it didn't unescape, re-encoding a name
+        // that already had an escaped apostrophe in it would double it a second
+        // time on export, corrupting an element the user never even renamed.
         function stripQuotes(str) {
-            if (str && str.startsWith && str.startsWith("'") && str.endsWith("'")) {
-                return str.substring(1, str.length - 1);
+            if (str && str.startsWith && str.startsWith("'") && str.endsWith("'") && str.length >= 2) {
+                const inner = str.substring(1, str.length - 1);
+                return inner.replace(/''/g, "'");
             }
             return str;
         }
@@ -1508,6 +1572,21 @@
             } else {
                 crossWarning.style.display = 'none';
             }
+
+            // Hard validation gate: an unrecognised class is blocked from Apply unless
+            // the explicit "Allow unrecognised class" override is ticked -- no silent
+            // fallback to the generic signature without the user deliberately opting in.
+            const classValidationMsg = document.getElementById('classValidationMsg');
+            const overrideBox = document.getElementById('allowUnrecognisedClass');
+            if (selectedClass && !schemaEntry && !(overrideBox && overrideBox.checked)) {
+                targetClass.classList.add('input-invalid');
+                classValidationMsg.style.display = 'block';
+                classValidationMsg.textContent = `"${selectedClass}" is not a recognised class in the active schema (${ACTIVE_SCHEMA_NAME}). Tick "Allow unrecognised class" above to proceed anyway, or pick a suggested class.`;
+            } else {
+                targetClass.classList.remove('input-invalid');
+                classValidationMsg.style.display = 'none';
+            }
+            updateApplyButtonState();
 
             // Clear User Defined Type / Rename Pattern / Description once the typed
             // text resolves to a genuinely new, recognised class — not on every
@@ -1670,11 +1749,28 @@
             runFilter();
         }
 
+        // Whether the currently-typed target class is safe to Apply: either it's
+        // recognised in the active schema, or the user has explicitly ticked the
+        // "allow unrecognised class" override. No selection is valid without a
+        // class typed in at all.
+        function isTargetClassValid() {
+            const cls = targetClass.value.trim().toUpperCase();
+            if (!cls) return false;
+            if (IFC4X3_SCHEMA.hasOwnProperty(cls)) return true;
+            const overrideBox = document.getElementById('allowUnrecognisedClass');
+            return !!(overrideBox && overrideBox.checked);
+        }
+
+        function updateApplyButtonState() {
+            const size = selectedElementIds.size;
+            btnApply.disabled = size === 0 || !isTargetClassValid();
+            btnApply.innerText = `Apply to Selected (${size})`;
+        }
+
         function updateSelectionMetrics() {
             const size = selectedElementIds.size;
             selectionCountText.innerText = `${size} Selected`;
-            btnApply.disabled = size === 0;
-            btnApply.innerText = `Apply to Selected (${size})`;
+            updateApplyButtonState();
             updateChangesPreview();
         }
 
@@ -1682,16 +1778,57 @@
         function applyBulkReclass() {
             if (selectedElementIds.size === 0) return;
 
+            // Hard guard, not just relying on the button's disabled state -- this
+            // function is the actual point of no return for the batch, so it checks
+            // for itself rather than trusting the UI never got out of sync.
+            if (!isTargetClassValid()) {
+                alert('"' + targetClass.value + '" is not a recognised class in the active schema (' + ACTIVE_SCHEMA_NAME + '). Tick "Allow unrecognised class" if you want to proceed anyway.');
+                return;
+            }
+
             const targetCls = targetClass.value.toUpperCase();
+            const isOverride = !IFC4X3_SCHEMA.hasOwnProperty(targetCls);
             const preType = document.getElementById('predefinedType').value;
             const userType = userdefinedType.value.trim();
             const pattern = renamePattern.value.trim();
             const desc = description.value.trim();
 
+            // Hoisted once (was previously computed per-element inside the loop) so
+            // the fix #4 confirmation check below can reuse it without duplicating
+            // the fallback logic.
+            const genericFallback = ACTIVE_SCHEMA_NAME === 'IFC2X3'
+                ? { attrs: 8, typeIdx: null }
+                : { attrs: 9, typeIdx: 8 };
+            const schemaDef = IFC4X3_SCHEMA[targetCls] || genericFallback;
+            const targetAttributeCount = schemaDef.attrs;
+
+            // Fix #4: these aren't corruption risks, they're silent side effects --
+            // warn and require explicit acknowledgement before committing a batch
+            // that will (a) strip a currently-active type relationship, or (b)
+            // truncate attribute values the target class has no room for.
+            let willStripTypeRelation = 0;
+            let willTruncateAttrs = 0;
+            selectedElementIds.forEach(id => {
+                if (typeRelatedElementIds.has(id)) willStripTypeRelation++;
+                const elem = parsedElements.find(e => e.id === id);
+                if (elem && elem.args.length > targetAttributeCount) willTruncateAttrs++;
+            });
+            if (willStripTypeRelation > 0 || willTruncateAttrs > 0) {
+                const parts = [];
+                if (willStripTypeRelation > 0) parts.push(`${willStripTypeRelation} element(s) will lose their current Type relationship (IFCRELDEFINESBYTYPE) and end up with no type assignment.`);
+                if (willTruncateAttrs > 0) parts.push(`${willTruncateAttrs} element(s) have more attribute values than ${targetCls} supports -- the extra values will be discarded.`);
+                const proceed = confirm(`Before applying this batch:\n\n${parts.join('\n')}\n\nProceed anyway?`);
+                if (!proceed) return;
+            }
+
             parsedElements.forEach(elem => {
                 if (selectedElementIds.has(elem.id)) {
                     elem.currentClass = targetCls;
                     elem.isModified = true;
+                    // Remembers whether this specific element's class was allowed through
+                    // via the override, so the export backstop (step 3) doesn't re-block
+                    // something the user already explicitly signed off on.
+                    elem.classOverridden = isOverride;
 
                     let updatedName = elem.originalName;
                     if (pattern) {
@@ -1704,22 +1841,19 @@
                         elem.args = [...elem.originalArgs];
                     }
 
-                    // Safely modify positional attributes
-                    elem.args[2] = `'${updatedName}'`; // Name
-                    elem.args[3] = desc ? `'${desc}'` : '$'; // Description
+                    // Safely modify positional attributes -- always routed through
+                    // stepEncodeString so embedded apostrophes get doubled correctly.
+                    // TODO (out of scope for this fix): broader IFC/STEP encoded-character
+                    // handling -- e.g. \X2\...\X0\ non-ASCII escape sequences -- isn't
+                    // handled here. Apostrophe doubling is the concrete, verified bug;
+                    // that's a separate, lower-priority concern.
+                    elem.args[2] = stepEncodeString(updatedName); // Name
+                    elem.args[3] = stepEncodeString(desc); // Description
 
                     // Dynamic element parameter signature padding matching target schema requirements.
                     // Unrecognised (hand-typed) classes fall back to the generic IfcElement
                     // signature: 9 arguments, PredefinedType at index 8.
-                    // Fallback for a hand-typed class not in the active table: IFC2X3
-                    // mostly lacks PredefinedType entirely (added in IFC4), so its
-                    // generic element signature is 8 args with no type slot; IFC4/4X3
-                    // add PredefinedType as a 9th argument.
-                    const genericFallback = ACTIVE_SCHEMA_NAME === 'IFC2X3'
-                        ? { attrs: 8, typeIdx: null }
-                        : { attrs: 9, typeIdx: 8 };
-                    const schemaDef = IFC4X3_SCHEMA[targetCls] || genericFallback;
-                    const targetAttributeCount = schemaDef.attrs;
+                    // (targetAttributeCount, schemaDef computed once above, outside this loop)
                     const typeIndex = schemaDef.typeIdx; // null for classes with no PredefinedType at all
 
                     while (elem.args.length < targetAttributeCount) {
@@ -1735,11 +1869,11 @@
                         // an enum string into a positional argument that isn't one, since that
                         // silently corrupts the STEP entity. ObjectType can still carry free text.
                         if (userType) {
-                            elem.args[4] = `'${userType}'`;
+                            elem.args[4] = stepEncodeString(userType);
                         }
                     } else if (userType) {
                         elem.args[typeIndex] = '.USERDEFINED.';
-                        elem.args[4] = `'${userType}'`; // ObjectType is index 4
+                        elem.args[4] = stepEncodeString(userType); // ObjectType is index 4
                     } else if (preType) {
                         elem.args[typeIndex] = `.${preType.toUpperCase()}.`;
                         elem.args[4] = '$'; // Clear ObjectType so we remain compliant
@@ -1833,6 +1967,13 @@
 
             const reclassedIds = new Set(parsedElements.filter(e => e.isModified).map(e => e.id));
 
+            // Backstop for fix #2: re-validate every modified element's class against
+            // the active schema right here, at the point the line is actually
+            // compiled -- not just at the moment Apply was clicked -- so any future
+            // code path that sets currentClass without going through
+            // applyBulkReclass still gets caught rather than silently exported.
+            const exportErrors = [];
+
             for (let i = 0; i < totalLines; i++) {
                 let line = ifcLines[i];
                 
@@ -1843,6 +1984,10 @@
                         const stepId = parseInt(line.substring(1, eqIdx));
                         const elem = elementLookup.get(stepId);
                         if (elem && elem.isModified) {
+                            const clsValid = IFC4X3_SCHEMA.hasOwnProperty(elem.currentClass) || elem.classOverridden;
+                            if (!clsValid) {
+                                exportErrors.push(`#${elem.id}: class "${elem.currentClass}" is not recognised in the active schema (${ACTIVE_SCHEMA_NAME}) and was not explicitly allowed via the override -- refusing to write this line.`);
+                            }
                             const argsString = elem.args.join(',');
                             line = `#${elem.id}= ${elem.currentClass.toUpperCase()}(${argsString});`;
                         }
@@ -1887,6 +2032,58 @@
                     showProgress("Assembling export model...", pct, `Processed line ${i.toLocaleString()} of ${totalLines.toLocaleString()}...`);
                     await new Promise(r => setTimeout(r, 0));
                 }
+            }
+
+            showProgress("Validating export before save...", 100, "Re-parsing assembled output to confirm it's actually valid...");
+            await new Promise(r => setTimeout(r, 50));
+
+            // Fix #3: re-parse the assembled output and confirm every modified line is
+            // genuinely valid before writing anything to disk. Reuses parseEntityLine
+            // and splitStepArgs -- the same functions the real parser uses -- so this
+            // can never silently drift out of sync with what "valid" actually means.
+            // This is a backstop, not a replacement for fixes #1/#2: it exists to
+            // catch a gap in either of those (or a future change) rather than trust
+            // that they always worked.
+            const validationErrors = [...exportErrors];
+            reclassedIds.forEach(id => {
+                const elem = elementLookup.get(id);
+                if (!elem) return;
+                const compiledLine = exportLines[elem.lineIndex];
+                if (!compiledLine) {
+                    validationErrors.push(`#${id}: could not locate its compiled line for validation.`);
+                    return;
+                }
+
+                const reparsed = parseEntityLine(compiledLine.replace(/\n$/, ''));
+                if (!reparsed) {
+                    validationErrors.push(`#${id}: compiled line is not valid "#ID= CLASS(args...);" STEP syntax.`);
+                    return;
+                }
+
+                const schemaEntry = IFC4X3_SCHEMA[reparsed.className];
+                if (!schemaEntry && !elem.classOverridden) {
+                    validationErrors.push(`#${id}: class "${reparsed.className}" does not resolve in the active schema (${ACTIVE_SCHEMA_NAME}).`);
+                }
+                if (schemaEntry && reparsed.args.length !== schemaEntry.attrs) {
+                    validationErrors.push(`#${id}: expected ${schemaEntry.attrs} arguments for ${reparsed.className}, compiled line has ${reparsed.args.length}.`);
+                }
+
+                // Quote balance: an odd count of un-doubled ' characters in the raw
+                // args string means a string literal wasn't closed correctly --
+                // either fix #1 has a gap, or the source had something unexpected.
+                const quoteCount = (reparsed.argsString.match(/'/g) || []).length;
+                if (quoteCount % 2 !== 0) {
+                    validationErrors.push(`#${id}: unbalanced quotes in compiled arguments (${quoteCount} ' characters) -- likely an apostrophe-escaping issue.`);
+                }
+            });
+
+            if (validationErrors.length > 0) {
+                hideProgress();
+                const maxShown = 10;
+                const shown = validationErrors.slice(0, maxShown);
+                const more = validationErrors.length > maxShown ? `\n...and ${validationErrors.length - maxShown} more.` : '';
+                alert(`Export cancelled -- ${validationErrors.length} problem(s) found while validating the output before save:\n\n${shown.join('\n')}${more}\n\nNo file was written.`);
+                return;
             }
 
             showProgress("Writing physical document...", 100, "Compiling native browser Blob transfer stream...");
