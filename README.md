@@ -59,4 +59,4 @@ The "Rename Pattern" box is optional.
 
 - Saving works best in Chrome or Edge, where clicking Export brings up a proper "Save As" dialog and suggests a filename based on the file you opened. Other browsers will save it automatically to your regular downloads folder instead.
 - Nothing about your model ever leaves your computer — the whole tool runs in the browser tab itself, with no server involved.
-- DO NOT use on original IFC files, always do a copy and save to an obviously different name.
+- DO NOT use on original IFC files, always make a copy and save to an obviously different name and work on that file.
